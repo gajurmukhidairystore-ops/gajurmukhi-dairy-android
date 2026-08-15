@@ -80,3 +80,6 @@
 - [ ] Add operation-level authorization tests for allowed and blocked staff actions
 - [ ] Implement verified mixed grocery/dairy inventory categories and stock-adjustment workflow
 - [ ] Persist QR payment status on invoices and reflect paid/pending state in bills, WhatsApp, and printed receipts
+- [ ] Complete foreground collector GPS check-in with shop distance and visible tracking status
+- [ ] Complete final role, staff, inventory, QR, logo, sharing, and receipt integration verification
+- [ ] Run final web and Flutter tests plus cloud APK/AAB build verification
