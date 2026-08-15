@@ -1,0 +1,45 @@
+name: gajurmukhi_dairy_business_pro
+description: Offline-first smart billing, dairy collection and AI business management system.
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  provider: ^6.1.2
+  sqflite: ^2.3.3+1
+  path: ^1.9.0
+  intl: ^0.20.3
+  uuid: ^4.5.1
+  http: ^1.2.2
+  shared_preferences: ^2.3.2
+  pdf: ^3.11.1
+  printing: ^5.13.4
+  esc_pos_utils_plus: ^2.0.4
+  file_picker: ^8.1.2
+  share_plus: ^10.0.2
+  connectivity_plus: ^6.0.5
+  path_provider: ^2.1.4
+  permission_handler: ^11.3.1
+  fl_chart: ^0.69.0
+  crypto: ^3.0.5
+  supabase_flutter: ^2.9.0
+  nepali_date_picker: ^7.0.1
+  bikram_sambat: ^1.2.0
+  qr_flutter: ^4.1.0
+  print_bluetooth_thermal_plus: ^1.0.0
+  url_launcher: ^6.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  sqflite_common_ffi: ^2.3.5
+
+flutter:
+  uses-material-design: true

@@ -1,0 +1,53 @@
+# Project TODO
+
+- [x] Establish the polished dairy-business visual system: typography, palette, spacing, responsive layout, and interaction states
+- [x] Add cloud database schema for products, customers, ledger transactions, invoices, invoice items, farmers, milk collections, rate slabs, payments, and settings
+- [x] Add database helpers and protected tRPC procedures for all business entities
+- [x] Build dashboard with daily, weekly, and monthly sales, collection, payouts, and outstanding balances
+- [x] Build product and inventory catalog with name, unit, price, and stock quantity management
+- [x] Build retail billing flow with product search, quantity, price, discount, total calculation, customer selection, and bill persistence
+- [x] Build customer ledger with credit/debit entries, outstanding balance, and payment history
+- [x] Build farmer directory and morning/evening milk collection entry with quantity, FAT, and SNF
+- [x] Build configurable FAT/SNF rate slab editor and deterministic farmer payout calculation engine
+- [x] Build QR payment display on billing screen with configurable UPI payment details
+- [x] Build browser Web Bluetooth ESC/POS printing for 58mm and 80mm thermal printers
+- [x] Build invoice link/PDF sharing flow and WhatsApp Web pre-filled message action
+- [x] Build reports with charts and date-range summaries for sales, collections, payouts, and receivables
+- [x] Integrate the built-in LLM through the provided AI chat component for business questions
+- [x] Add empty, loading, error, validation, accessibility, and responsive states across workflows
+- [x] Add Vitest coverage for billing totals, rate calculation, ledger balances, and core procedures
+- [x] Run type checks, tests, build verification, and browser visual verification
+- [x] Add payments and settings tables plus backend procedures for persisted UPI and business settings
+- [x] Complete dashboard and report queries for daily, weekly, and monthly sales, collection volume, payouts, and receivables
+- [x] Add product editing, stock adjustment, invoice stock decrement, and line-price editing
+- [x] Build customer ledger entry creation, payment history, and running outstanding balances
+- [x] Add edit/delete controls for FAT/SNF slabs and persist QR/UPI settings through the backend
+- [x] Strengthen mutation error handling and validation across all workflows
+- [x] Audit supplied Flutter source files and map existing business behavior into the web app
+- [x] Preserve source defaults: NPR currency, Value for Life tagline, offline-first/cloud-sync concepts, role/audit expectations, and source integration contracts
+- [x] Reconcile source checklist gaps with the requested web scope and clearly separate implemented behavior from production credentials/setup
+- [x] Verify supplied source service logic for billing, ledger, farmer rates, printing, QR, WhatsApp, AI, and synchronization before finalizing the web implementation
+- [x] Make the supplied Flutter Android application the primary deliverable and keep the web dashboard secondary
+- [x] Audit Flutter toolchain availability, project completeness, package dependencies, Android configuration, and test coverage
+- [x] Audit and complete offline billing, Bluetooth thermal printing, customer ledger, farmer collection, FAT/SNF rates, stock, reports, QR, WhatsApp, cloud sync, auth, and AI flows in Flutter
+- [x] Add or complete Flutter automated tests for totals, due balances, stock reduction, FAT/SNF matching, sync payloads, and invoice sharing contracts
+- [x] Run Flutter analyze, Flutter tests, and available Android workflow checks
+- [ ] Build and verify a debug/release APK and AAB when Flutter and Android SDK tooling are available
+- [x] Document physical-device tests still required for Bluetooth printers, QR/payment verification, WhatsApp sharing, offline/online sync, and signed release installation
+- [x] Prepare an external cloud Flutter build workflow for debug APK and release AAB outputs
+- [x] Add cloud-builder documentation for Flutter version, Android SDK, Java, Gradle, dependency resolution, and artifact paths
+- [x] Add secure Android signing-variable guidance without committing keystores or credentials
+- [x] Add CI validation for Flutter analyze and unit tests before Android packaging
+- [x] Validate the external-builder configuration locally without repeating the unstable sandbox Gradle packaging attempt
+- [x] Adapt GitHub Actions to publish debug APK, release APK, and release AAB artifacts in one cloud run
+- [x] Add phone-only GitHub setup and artifact-download instructions
+- [x] Add safe release-signing setup guidance that does not require PC tooling
+- [x] Validate the updated workflow syntax and artifact paths without repeating sandbox Android packaging
+- [ ] Export the complete Flutter project into gajurmukhidairystore-ops/gajurmukhi-dairy-android
+- [ ] Ensure repository root or documented path contains pubspec.yaml, lib/, android/, all required Flutter source, and .github/workflows/flutter-android.yml
+- [ ] Include flutter_app/CLOUD_BUILD.md or an equivalent root-level cloud-build guide
+- [ ] Verify GitHub Actions discovers the Flutter Android build workflow after export
+- [ ] Recheck authenticated access to gajurmukhidairstore-ops/gajurmukhi-dairy-android
+- [ ] Synchronize complete Flutter source and GitHub Actions workflow into the confirmed repository
+- [ ] Verify repository tree and Actions workflow discovery
+- [ ] Trigger and verify debug APK build, then release APK/AAB build if possible
