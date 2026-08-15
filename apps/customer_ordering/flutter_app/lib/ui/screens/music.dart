@@ -56,7 +56,7 @@ class _MusicScreenState extends State<MusicScreen> {
     final next = YoutubePlayerController.fromVideoId(
       videoId: id,
       autoPlay: autoPlay,
-      params: const YoutubePlayerParams(showControls: true, showFullscreenButton: true, privacyEnhanced: true),
+      params: const YoutubePlayerParams(showControls: true, showFullscreenButton: true, privacyEnhancedMode: true),
     );
     setState(() { controller = next; currentIndex = index; });
   }
