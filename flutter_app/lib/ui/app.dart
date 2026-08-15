@@ -91,7 +91,7 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     final p = context.watch<BusinessProvider>();
     final screens = [
-      DashboardScreen(p),
+      DashboardScreen(p, onNavigate: (destination) => setState(() => index = destination)),
       BillingScreen(p),
       CustomersScreen(p),
       StockScreen(p),
@@ -99,33 +99,35 @@ class _MainShellState extends State<MainShell> {
       ReportsScreen(p),
       AiScreen(p),
     ];
+    const navigationTargets = [0, 5, 2, 4, 3];
+    final selectedNavigationIndex = navigationTargets.indexOf(index);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Gajurmukhi Dairy & Store'),
-        actions: [
-          IconButton(onPressed: p.refresh, icon: const Icon(Icons.sync)),
-          PopupMenuButton<String>(
-            onSelected: (_) {},
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'settings', child: Text('Settings')),
-              PopupMenuItem(value: 'users', child: Text('Users & Roles')),
-              PopupMenuItem(value: 'backup', child: Text('Backup & Cloud')),
-            ],
-          ),
-        ],
-      ),
+      appBar: index == 0
+          ? null
+          : AppBar(
+              title: const Text('Gajurmukhi Dairy & Store'),
+              actions: [
+                IconButton(onPressed: p.refresh, icon: const Icon(Icons.sync)),
+                PopupMenuButton<String>(
+                  onSelected: (_) {},
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'settings', child: Text('Settings')),
+                    PopupMenuItem(value: 'users', child: Text('Users & Roles')),
+                    PopupMenuItem(value: 'backup', child: Text('Backup & Cloud')),
+                  ],
+                ),
+              ],
+            ),
       body: screens[index],
       bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
-        onDestinationSelected: (i) => setState(() => index = i),
+        selectedIndex: selectedNavigationIndex < 0 ? 0 : selectedNavigationIndex,
+        onDestinationSelected: (i) => setState(() => index = navigationTargets[i]),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.dashboard), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.receipt_long), label: 'Billing'),
-          NavigationDestination(icon: Icon(Icons.people), label: 'Ledger'),
-          NavigationDestination(icon: Icon(Icons.inventory_2), label: 'Stock'),
+          NavigationDestination(icon: Icon(Icons.home_filled), label: 'Home'),
+          NavigationDestination(icon: Icon(Icons.bar_chart), label: 'Reports'),
+          NavigationDestination(icon: Icon(Icons.person_add_alt_1), label: 'Add User'),
           NavigationDestination(icon: Icon(Icons.local_drink), label: 'Dairy'),
-          NavigationDestination(icon: Icon(Icons.analytics), label: 'Reports'),
-          NavigationDestination(icon: Icon(Icons.auto_awesome), label: 'AI'),
+          NavigationDestination(icon: Icon(Icons.settings), label: 'More'),
         ],
       ),
     );

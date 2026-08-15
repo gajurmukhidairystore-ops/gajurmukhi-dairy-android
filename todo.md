@@ -54,5 +54,8 @@
 - [x] Resolve GitHub connector write permission: initial 403 was resolved after refreshed authorization and the repository push succeeded
 - [x] Update WhatsApp sharing with a detailed, formatted daily dairy transaction summary
 - [x] Add automated coverage for the detailed WhatsApp daily summary
+- [ ] Redesign Flutter Android UI in a Milk Khata-style customer/farmer ledger interface based on supplied screenshots
+- [ ] Add monthly summary cards, quick actions, transaction search/history, bulk entry, and bottom navigation to the redesigned mobile shell
+- [ ] Preserve existing billing, milk collection, ledger, WhatsApp, payment, FAT/SNF, and sync flows within the redesigned UI
 - [ ] Wire the Flutter billing/dairy UI to use the detailed WhatsApp summary formatter
 - [ ] Run Flutter tests and analyze for the updated WhatsApp sharing flow
