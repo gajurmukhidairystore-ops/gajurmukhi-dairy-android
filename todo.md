@@ -32,7 +32,7 @@
 - [x] Audit and complete offline billing, Bluetooth thermal printing, customer ledger, farmer collection, FAT/SNF rates, stock, reports, QR, WhatsApp, cloud sync, auth, and AI flows in Flutter
 - [x] Add or complete Flutter automated tests for totals, due balances, stock reduction, FAT/SNF matching, sync payloads, and invoice sharing contracts
 - [x] Run Flutter analyze, Flutter tests, and available Android workflow checks
-- [ ] Build and verify a debug/release APK and AAB when Flutter and Android SDK tooling are available
+- [x] Build and verify a debug/release APK and AAB when Flutter and Android SDK tooling are available
 - [x] Document physical-device tests still required for Bluetooth printers, QR/payment verification, WhatsApp sharing, offline/online sync, and signed release installation
 - [x] Prepare an external cloud Flutter build workflow for debug APK and release AAB outputs
 - [x] Add cloud-builder documentation for Flutter version, Android SDK, Java, Gradle, dependency resolution, and artifact paths
@@ -43,11 +43,16 @@
 - [x] Add phone-only GitHub setup and artifact-download instructions
 - [x] Add safe release-signing setup guidance that does not require PC tooling
 - [x] Validate the updated workflow syntax and artifact paths without repeating sandbox Android packaging
-- [ ] Export the complete Flutter project into gajurmukhidairystore-ops/gajurmukhi-dairy-android
-- [ ] Ensure repository root or documented path contains pubspec.yaml, lib/, android/, all required Flutter source, and .github/workflows/flutter-android.yml
-- [ ] Include flutter_app/CLOUD_BUILD.md or an equivalent root-level cloud-build guide
-- [ ] Verify GitHub Actions discovers the Flutter Android build workflow after export
-- [ ] Recheck authenticated access to gajurmukhidairstore-ops/gajurmukhi-dairy-android
-- [ ] Synchronize complete Flutter source and GitHub Actions workflow into the confirmed repository
-- [ ] Verify repository tree and Actions workflow discovery
-- [ ] Trigger and verify debug APK build, then release APK/AAB build if possible
+- [x] Export the complete Flutter project into gajurmukhidairystore-ops/gajurmukhi-dairy-android
+- [x] Ensure repository root or documented path contains pubspec.yaml, lib/, android/, all required Flutter source, and .github/workflows/flutter-android.yml
+- [x] Include flutter_app/CLOUD_BUILD.md or an equivalent root-level cloud-build guide
+- [x] Verify GitHub Actions discovers the Flutter Android build workflow after export
+- [x] Recheck authenticated access using the exact confirmed repository path gajurmukhidairystore-ops/gajurmukhi-dairy-android (legacy spelling corrected)
+- [x] Synchronize complete Flutter source and GitHub Actions workflow into the confirmed repository
+- [x] Verify repository tree and Actions workflow discovery
+- [x] Trigger and verify debug APK build, then release APK/AAB build if possible
+- [x] Resolve GitHub connector write permission: initial 403 was resolved after refreshed authorization and the repository push succeeded
+- [x] Update WhatsApp sharing with a detailed, formatted daily dairy transaction summary
+- [x] Add automated coverage for the detailed WhatsApp daily summary
+- [ ] Wire the Flutter billing/dairy UI to use the detailed WhatsApp summary formatter
+- [ ] Run Flutter tests and analyze for the updated WhatsApp sharing flow

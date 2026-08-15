@@ -46,6 +46,32 @@ void main() {
     expect(envelope['payload'], {'total': 250, 'paid': 200});
   });
 
+  test('WhatsApp daily summary includes itemized payment details', () {
+    final message = WhatsAppService.dailyTransactionMessage(
+      invoiceNumber: 'INV-2026-001',
+      date: DateTime(2026, 8, 15, 9, 30),
+      customerName: 'Sita Sharma',
+      customerPhone: '+977 9812345678',
+      items: [
+        {'name': 'Fresh milk', 'quantity': 2, 'unitPrice': 90, 'unit': 'L'},
+        {'name': 'Curd', 'quantity': 1, 'unitPrice': 75, 'unit': 'pack'},
+      ],
+      subtotal: 255,
+      discount: 5,
+      total: 250,
+      paid: 200,
+      paymentMethod: 'credit',
+    );
+
+    expect(message, contains('*GAJURMUKHI DAIRY & STORE*'));
+    expect(message, contains('*Invoice:* INV-2026-001'));
+    expect(message, contains('*Customer:* Sita Sharma'));
+    expect(message, contains('1. Fresh milk — 2 L × NPR 90.00 = NPR 180.00'));
+    expect(message, contains('*Discount:* -NPR 5.00'));
+    expect(message, contains('*Balance due:* NPR 50.00'));
+    expect(message, contains('*Payment mode:* Credit'));
+  });
+
   test('WhatsApp invoice URI strips formatting and encodes the message', () {
     final uri = WhatsAppService.messageUri('+977 981-234-5678', 'Invoice total: NPR 250');
 
