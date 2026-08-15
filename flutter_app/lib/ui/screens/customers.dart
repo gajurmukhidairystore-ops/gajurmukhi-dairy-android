@@ -45,10 +45,11 @@ class _CustomersScreenState extends State<CustomersScreen> {
     try {
       await widget.p.createCreditReminder(customerId: '${customer['id']}', amount: amount, channel: 'WHATSAPP', message: message);
       final phone = '${customer['phone'] ?? ''}'.trim();
-      if (phone.isEmpty) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reminder saved, but this customer has no phone number'))); return; }
+      if (phone.isEmpty) { if (!mounted) return; ScaffoldMessenger.of(this.context).showSnackBar(const SnackBar(content: Text('Reminder saved, but this customer has no phone number'))); return; }
       await WhatsAppService().openMessage(phone, message);
     } catch (error) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not create reminder: $error')));
+      if (!mounted) return;
+      ScaffoldMessenger.of(this.context).showSnackBar(SnackBar(content: Text('Could not create reminder: $error')));
     }
   }
 

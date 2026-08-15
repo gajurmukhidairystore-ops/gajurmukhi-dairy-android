@@ -110,7 +110,23 @@ class _StockScreenState extends State<StockScreen> {
               leading: CircleAvatar(child: Icon('${x['category']}' == 'Grocery' ? Icons.shopping_basket : Icons.local_drink)),
               title: Text('${x['name']}'),
               subtitle: Text('${x['category']} • ${x['unit']} • Sale NPR ${x['sale_price']}${'${x['barcode']}'.trim().isEmpty ? '' : ' • Barcode ${x['barcode']}'}'),
-              trailing: Row(mainAxisSize: MainAxisSize.min, children: [Column(mainAxisAlignment: MainAxisAlignment.center, children: [Text(stock.toStringAsFixed(2), style: const TextStyle(fontWeight: FontWeight.bold)), Text(stock <= low ? 'LOW STOCK' : 'OK', style: TextStyle(color: stock <= low ? Colors.orange : Colors.green))]), IconButton(tooltip: 'Sales or purchase return', icon: const Icon(Icons.assignment_return_outlined), onPressed: () => recordReturnForProduct(x)]),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(stock.toStringAsFixed(2), style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text(stock <= low ? 'LOW STOCK' : 'OK', style: TextStyle(color: stock <= low ? Colors.orange : Colors.green)),
+                    ],
+                  ),
+                  IconButton(
+                    tooltip: 'Sales or purchase return',
+                    icon: const Icon(Icons.assignment_return_outlined),
+                    onPressed: () => recordReturnForProduct(x),
+                  ),
+                ],
+              ),
               onTap: () => adjust(x),
             ),
           );
