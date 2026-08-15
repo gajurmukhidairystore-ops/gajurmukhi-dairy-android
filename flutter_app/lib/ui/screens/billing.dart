@@ -26,6 +26,8 @@ class _BillingScreenState extends State<BillingScreen> {
   double get total => (subtotal - discount).clamp(0, double.infinity);
   double get due => (total - paid).clamp(0, double.infinity).toDouble();
 
+  String get qrStatus => payment == 'QR' ? (paid >= total && total > 0 ? 'received' : 'pending') : 'not_applicable';
+
   String get paymentQrData => 'upi://pay?pa=${Uri.encodeComponent(upiId.text.trim())}&pn=${Uri.encodeComponent('Gajurmukhi Dairy & Store')}&am=${total.toStringAsFixed(2)}&cu=INR&tn=${Uri.encodeComponent('Gajurmukhi bill')}';
 
   Map<String, Object?>? customerById(String? id) {
@@ -70,6 +72,7 @@ class _BillingScreenState extends State<BillingScreen> {
       discount: discount,
       paid: paid,
       paymentMethod: payment,
+      qrStatus: qrStatus,
     );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invoice saved')));
@@ -96,6 +99,7 @@ class _BillingScreenState extends State<BillingScreen> {
       due: due,
       paymentMethod: payment,
       upiId: upiId.text.trim().isEmpty ? null : upiId.text.trim(),
+      qrStatus: qrStatus,
     );
     await WhatsAppService().openMessage(customerPhone.text.trim(), message);
   }
@@ -237,6 +241,7 @@ class _BillingScreenState extends State<BillingScreen> {
                               total: total,
                               paid: paid,
                               due: due,
+                              qrStatus: qrStatus,
                             );
                           },
                     icon: const Icon(Icons.print),

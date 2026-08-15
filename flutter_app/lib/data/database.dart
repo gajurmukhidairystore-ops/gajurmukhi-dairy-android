@@ -7,7 +7,7 @@ class AppDatabase {
 
   Future<void> init() async {
     final p = join(await getDatabasesPath(), 'gajurmukhi_pro.db');
-    db = await openDatabase(p, version: 2, onCreate: _create, onUpgrade: _upgrade);
+    db = await openDatabase(p, version: 3, onCreate: _create, onUpgrade: _upgrade);
   }
 
   Future<void> _create(Database db, int version) async {
@@ -30,7 +30,7 @@ class AppDatabase {
         id TEXT PRIMARY KEY, invoice_no TEXT UNIQUE NOT NULL, customer_id TEXT,
         subtotal REAL NOT NULL, discount REAL DEFAULT 0, tax REAL DEFAULT 0,
         total REAL NOT NULL, paid REAL DEFAULT 0, due REAL DEFAULT 0,
-        payment_method TEXT, status TEXT DEFAULT 'PAID', note TEXT, created_at TEXT NOT NULL
+        payment_method TEXT, status TEXT DEFAULT 'PAID', qr_status TEXT DEFAULT 'not_applicable', note TEXT, created_at TEXT NOT NULL
       )
     ''');
     await db.execute('''
@@ -108,6 +108,9 @@ class AppDatabase {
   Future<void> _upgrade(Database db, int oldV, int newV) async {
     if (oldV < 2) {
       // Reserved for future schema migrations.
+    }
+    if (oldV < 3) {
+      await db.execute("ALTER TABLE invoices ADD COLUMN qr_status TEXT DEFAULT 'not_applicable'");
     }
   }
 

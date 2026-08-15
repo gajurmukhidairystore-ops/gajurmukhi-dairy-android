@@ -41,6 +41,22 @@ class BusinessProvider extends ChangeNotifier {
     await refresh();
   }
 
+  Future<void> adjustStock(String productId, double delta, String note) async {
+    Map<String, Object?>? product;
+    for (final row in products) {
+      if ('${row['id']}' == productId) { product = row; break; }
+    }
+    if (product == null || delta == 0) return;
+    final current = (product['stock'] as num?)?.toDouble() ?? 0;
+    final next = (current + delta).clamp(0, double.infinity).toDouble();
+    await db.db.rawUpdate('UPDATE products SET stock=? WHERE id=?', [next, productId]);
+    final movementId = uuid.v4();
+    final movement = {'id': movementId, 'product_id': productId, 'type': delta > 0 ? 'ADJUSTMENT_IN' : 'ADJUSTMENT_OUT', 'qty': delta, 'unit_cost': product['purchase_price'] ?? 0, 'note': note, 'created_at': DateTime.now().toIso8601String()};
+    await db.insert('stock_movements', movement);
+    await db.enqueueSync(entity: 'stock_movements', entityId: movementId, operation: 'upsert', payload: movement);
+    await refresh();
+  }
+
   Future<void> addProduct(String name, double price, double stock,
       {String unit='Unit', String category='General'}) async {
     final id = uuid.v4();
@@ -126,6 +142,7 @@ class BusinessProvider extends ChangeNotifier {
     required double discount,
     required double paid,
     required String paymentMethod,
+    String qrStatus = 'not_applicable',
   }) async {
     final id = uuid.v4();
     final no = 'INV-${DateTime.now().millisecondsSinceEpoch}';
@@ -139,8 +156,7 @@ class BusinessProvider extends ChangeNotifier {
         'id': id, 'invoice_no': no, 'customer_id': customerId,
         'subtotal': subtotal, 'discount': discount, 'tax': 0,
         'total': total, 'paid': paid, 'due': due,
-        'payment_method': paymentMethod,
-        'status': due <= 0 ? 'PAID' : 'CREDIT', 'created_at': now
+        'payment_method': paymentMethod, 'status': due <= 0 ? 'PAID' : 'CREDIT', 'qr_status': qrStatus, 'created_at': now
       });
       for (final i in items) {
         await txn.insert('invoice_items', {
@@ -163,7 +179,7 @@ class BusinessProvider extends ChangeNotifier {
         });
       }
     });
-    await db.enqueueSync(entity: 'invoices', entityId: id, operation: 'upsert', payload: {'id': id, 'invoice_no': no, 'customer_id': customerId, 'subtotal': subtotal, 'discount': discount, 'total': total, 'paid': paid, 'due': due, 'payment_method': paymentMethod, 'status': due <= 0 ? 'PAID' : 'CREDIT', 'items': items});
+    await db.enqueueSync(entity: 'invoices', entityId: id, operation: 'upsert', payload: {'id': id, 'invoice_no': no, 'customer_id': customerId, 'subtotal': subtotal, 'discount': discount, 'total': total, 'paid': paid, 'due': due, 'payment_method': paymentMethod, 'status': due <= 0 ? 'PAID' : 'CREDIT', 'qr_status': qrStatus, 'items': items});
     await refresh();
   }
 

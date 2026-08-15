@@ -20,6 +20,7 @@ export type DailyDairyTransactionInput = {
   due?: number;
   paymentMode?: string;
   upiId?: string;
+  qrStatus?: "not_applicable" | "pending" | "received";
 };
 
 function amount(value: number): string {
@@ -69,6 +70,7 @@ export function formatDailyDairyTransaction(input: DailyDairyTransactionInput): 
     `*Balance due:* ${amount(due)}`,
     `*Payment mode:* ${paymentLabel(input.paymentMode)}`,
     ...(input.upiId ? [`*UPI:* ${input.upiId}`] : []),
+    ...(input.qrStatus && input.qrStatus !== "not_applicable" ? [`*QR payment:* ${input.qrStatus === "received" ? "Received" : "Pending confirmation"}`] : []),
     "",
     due > 0 ? "Please settle the balance at your convenience." : "Payment received in full. Thank you!",
     "Value for Life",

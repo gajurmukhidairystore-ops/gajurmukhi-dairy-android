@@ -68,11 +68,15 @@
 - [ ] Rebuild and consolidate all previously requested features into one Android-first product flow
 - [ ] Freeze the unified role, offline, cloud-sync, retail, dairy, sharing, reporting, printing, AI, and GPS requirements
 - [ ] Re-audit existing Flutter and web implementations for reusable versus incomplete functionality
-- [ ] Add staff management with Admin, Shop, and Collector permissions
-- [ ] Support grocery and dairy inventory with products, stock, prices, and stock adjustments
-- [ ] Generate smart QR payments using the exact invoice amount without customer amount entry
-- [ ] Show QR payment state in customer bills, WhatsApp sharing, and receipts
+- [x] Add staff management with Admin, Shop, and Collector permissions
+- [x] Support grocery and dairy inventory with products, stock, prices, and stock adjustments
+- [x] Generate smart QR payments using the exact invoice amount without customer amount entry
+- [x] Show QR payment state in customer bills, WhatsApp sharing, and receipts
 - [ ] Add monthly summary cards, quick actions, transaction search/history, bulk entry, and bottom navigation to the redesigned mobile shell
 - [ ] Preserve existing billing, milk collection, ledger, WhatsApp, payment, FAT/SNF, and sync flows within the redesigned UI
 - [ ] Wire the Flutter billing/dairy UI to use the detailed WhatsApp summary formatter
 - [ ] Run Flutter tests and analyze for the updated WhatsApp sharing flow
+- [ ] Enforce Admin/Shop/Collector permissions across all relevant Flutter screens and web/backend procedures
+- [ ] Add operation-level authorization tests for allowed and blocked staff actions
+- [ ] Implement verified mixed grocery/dairy inventory categories and stock-adjustment workflow
+- [ ] Persist QR payment status on invoices and reflect paid/pending state in bills, WhatsApp, and printed receipts

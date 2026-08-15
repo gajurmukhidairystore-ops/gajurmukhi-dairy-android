@@ -67,7 +67,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.local_drink, size: 48, color: Color(0xff16803d)),
+                    ClipRRect(borderRadius: BorderRadius.circular(16), child: Image.asset('assets/gajurmukhi-app-logo.png', width: 72, height: 72, fit: BoxFit.cover)),
                     const SizedBox(height: 12),
                     const Text('Gajurmukhi Dairy & Store', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 20),
@@ -203,7 +203,7 @@ class _AuthCard extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    const CircleAvatar(radius: 30, backgroundColor: Color(0xffe6f4ea), child: Icon(Icons.local_drink, color: Color(0xff16803d), size: 30)),
+                    ClipRRect(borderRadius: BorderRadius.circular(18), child: Image.asset('assets/gajurmukhi-app-logo.png', width: 60, height: 60, fit: BoxFit.cover)),
                     const SizedBox(height: 14),
                     Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 6),

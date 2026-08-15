@@ -22,6 +22,7 @@ class WhatsAppService {
     double? due,
     String? paymentMethod,
     String? upiId,
+    String qrStatus = 'not_applicable',
   }) {
     String money(double value) => 'NPR ${value.toStringAsFixed(2)}';
     String qty(double value) => value == value.roundToDouble()
@@ -69,6 +70,7 @@ class WhatsAppService {
       '*Balance due:* ${money(balance)}',
       '*Payment mode:* ${paymentLabel(paymentMethod)}',
       if (upiId?.trim().isNotEmpty == true) '*UPI:* $upiId',
+      if (qrStatus != 'not_applicable') '*QR payment:* ${qrStatus == 'received' ? 'Received' : 'Pending confirmation'}',
       '',
       balance > 0
           ? 'Please settle the balance at your convenience.'

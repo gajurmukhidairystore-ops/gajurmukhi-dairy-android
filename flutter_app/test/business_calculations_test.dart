@@ -70,6 +70,7 @@ void main() {
       total: 250,
       paid: 200,
       paymentMethod: 'credit',
+      qrStatus: 'pending',
     );
 
     expect(message, contains('*GAJURMUKHI DAIRY & STORE*'));
@@ -79,6 +80,7 @@ void main() {
     expect(message, contains('*Discount:* -NPR 5.00'));
     expect(message, contains('*Balance due:* NPR 50.00'));
     expect(message, contains('*Payment mode:* Credit'));
+    expect(message, contains('*QR payment:* Pending confirmation'));
   });
 
   test('WhatsApp invoice URI strips formatting and encodes the message', () {

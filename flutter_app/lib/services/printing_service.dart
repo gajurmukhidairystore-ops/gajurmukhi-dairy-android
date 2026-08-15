@@ -11,6 +11,7 @@ class PrintingService {
     required double total,
     required double paid,
     required double due,
+    String qrStatus = 'not_applicable',
   }) async {
     final doc = pw.Document();
     doc.addPage(
@@ -38,6 +39,7 @@ class PrintingService {
                 pw.Text('Total: NPR ${total.toStringAsFixed(2)}'),
                 pw.Text('Paid: NPR ${paid.toStringAsFixed(2)}'),
                 pw.Text('Due: NPR ${due.toStringAsFixed(2)}'),
+                if (qrStatus != 'not_applicable') pw.Text('QR payment: ${qrStatus == 'received' ? 'Received' : 'Pending confirmation'}'),
               ])),
           ],
         ),

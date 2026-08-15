@@ -1,0 +1,1 @@
+ALTER TABLE `invoices` ADD `qrStatus` enum('not_applicable','pending','received') DEFAULT 'not_applicable' NOT NULL;
