@@ -44,7 +44,7 @@ class WhatsAppService {
             return '${entry.key + 1}. $name — ${qty(quantity)}${unit == null ? '' : ' $unit'} × ${money(unitPrice)} = ${money(itemTotal)}';
           }).toList();
     final balance = (due ?? total - paid).clamp(0, double.infinity).toDouble();
-    final safeDiscount = discount < 0 ? 0 : discount;
+    final double safeDiscount = discount < 0 ? 0.0 : discount;
     final dateLabel = '${date.year.toString().padLeft(4, '0')}-'
         '${date.month.toString().padLeft(2, '0')}-'
         '${date.day.toString().padLeft(2, '0')} '
