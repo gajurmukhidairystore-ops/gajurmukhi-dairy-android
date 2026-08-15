@@ -12,4 +12,7 @@ class RolePermissions {
     if (role == 'collector') return [0, 4, 5].contains(destination);
     return destination == 0;
   }
+
+  static bool canCreateMilkCollection(String role) => role == 'admin' || role == 'collector';
+  static bool canRemoveMilkCollection(String role) => role == 'admin';
 }

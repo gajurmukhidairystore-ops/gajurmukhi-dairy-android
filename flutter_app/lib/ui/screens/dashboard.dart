@@ -121,9 +121,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   bottom: false,
                   child: Row(
                     children: [
-                      const CircleAvatar(
-                        backgroundColor: Colors.white24,
-                        child: Icon(Icons.local_drink, color: Colors.white),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.asset('assets/gajurmukhi-app-logo.png', width: 48, height: 48, fit: BoxFit.cover),
                       ),
                       const SizedBox(width: 12),
                       const Expanded(

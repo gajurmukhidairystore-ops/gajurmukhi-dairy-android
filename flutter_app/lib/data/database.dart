@@ -7,7 +7,7 @@ class AppDatabase {
 
   Future<void> init() async {
     final p = join(await getDatabasesPath(), 'gajurmukhi_pro.db');
-    db = await openDatabase(p, version: 3, onCreate: _create, onUpgrade: _upgrade);
+    db = await openDatabase(p, version: 5, onCreate: _create, onUpgrade: _upgrade);
   }
 
   Future<void> _create(Database db, int version) async {
@@ -85,6 +85,20 @@ class AppDatabase {
       )
     ''');
     await db.execute('''
+      CREATE TABLE returns(
+        id TEXT PRIMARY KEY, type TEXT NOT NULL, product_id TEXT NOT NULL,
+        qty REAL NOT NULL, amount REAL NOT NULL, party_id TEXT,
+        reference_id TEXT, note TEXT, created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE credit_reminders(
+        id TEXT PRIMARY KEY, customer_id TEXT NOT NULL, amount REAL NOT NULL,
+        channel TEXT NOT NULL, message TEXT, status TEXT DEFAULT 'PENDING',
+        created_at TEXT NOT NULL, sent_at TEXT
+      )
+    ''');
+    await db.execute('''
       CREATE TABLE users(
         id TEXT PRIMARY KEY, name TEXT NOT NULL, username TEXT UNIQUE NOT NULL,
         role TEXT NOT NULL, pin_hash TEXT, active INTEGER DEFAULT 1
@@ -112,6 +126,12 @@ class AppDatabase {
     if (oldV < 3) {
       await db.execute("ALTER TABLE invoices ADD COLUMN qr_status TEXT DEFAULT 'not_applicable'");
     }
+    if (oldV < 4) {
+      await db.execute('''CREATE TABLE returns(id TEXT PRIMARY KEY, type TEXT NOT NULL, product_id TEXT NOT NULL, qty REAL NOT NULL, amount REAL NOT NULL, party_id TEXT, reference_id TEXT, note TEXT, created_at TEXT NOT NULL)''');
+    }
+    if (oldV < 5) {
+      await db.execute('''CREATE TABLE credit_reminders(id TEXT PRIMARY KEY, customer_id TEXT NOT NULL, amount REAL NOT NULL, channel TEXT NOT NULL, message TEXT, status TEXT DEFAULT 'PENDING', created_at TEXT NOT NULL, sent_at TEXT)''');
+    }
   }
 
   Future<List<Map<String,Object?>>> query(String table, {String? where, List<Object?>? args}) =>
@@ -120,6 +140,9 @@ class AppDatabase {
   Future<int> insert(String table, Map<String,Object?> row) => db.insert(table, row);
   Future<int> update(String table, Map<String,Object?> row, String id) =>
       db.update(table, row, where: 'id=?', whereArgs: [id]);
+
+  Future<int> delete(String table, String id) =>
+      db.delete(table, where: 'id=?', whereArgs: [id]);
 
   Future<void> enqueueSync({required String entity, required String entityId, required String operation, required Map<String, dynamic> payload}) async {
     await db.insert('sync_queue', {'id': '${DateTime.now().microsecondsSinceEpoch}-$entityId', 'entity': entity, 'entity_id': entityId, 'operation': operation, 'payload': jsonEncode(payload), 'created_at': DateTime.now().toIso8601String(), 'synced': 0});

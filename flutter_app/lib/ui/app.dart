@@ -249,13 +249,14 @@ class _MainShellState extends State<MainShell> {
       BillingScreen(p),
       CustomersScreen(p),
       StockScreen(p),
-      DairyScreen(p),
+      DairyScreen(p, role: widget.session.role),
       ReportsScreen(p),
       AiScreen(p),
       ExpensesScreen(p),
     ];
     const navigationTargets = [0, 5, 2, 4, 7];
     final selectedNavigationIndex = navigationTargets.indexOf(index);
+    final activeScreen = canAccess(index) ? screens[index] : DashboardScreen(p, onNavigate: navigate);
     return Scaffold(
       appBar: index == 0 ? null : AppBar(
         title: Text('Gajurmukhi · ${widget.session.role.toUpperCase()}'),
@@ -270,7 +271,7 @@ class _MainShellState extends State<MainShell> {
           ),
         ],
       ),
-      body: screens[index],
+      body: activeScreen,
       bottomNavigationBar: NavigationBar(
         selectedIndex: selectedNavigationIndex < 0 ? 0 : selectedNavigationIndex,
         onDestinationSelected: (i) => navigate(navigationTargets[i]),

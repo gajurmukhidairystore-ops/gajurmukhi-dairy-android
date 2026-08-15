@@ -17,6 +17,21 @@ void main() {
     expect(BusinessCalculations.stockAfterSale(stock: 2, quantity: 5), 0);
   });
 
+  test('returns adjust stock according to sales or purchase direction', () {
+    expect(BusinessCalculations.stockAfterReturn(stock: 5, quantity: 2, type: 'SALE_RETURN'), 7);
+    expect(BusinessCalculations.stockAfterReturn(stock: 5, quantity: 2, type: 'PURCHASE_RETURN'), 3);
+    expect(BusinessCalculations.stockAfterReturn(stock: 1, quantity: 5, type: 'PURCHASE_RETURN'), 0);
+  });
+
+  test('barcode and credit reminder validation reject malformed values', () {
+    expect(BusinessCalculations.isValidBarcode(''), isTrue);
+    expect(BusinessCalculations.isValidBarcode('8901234567890'), isTrue);
+    expect(BusinessCalculations.isValidBarcode('bad barcode with spaces'), isFalse);
+    expect(BusinessCalculations.isValidCreditReminder(amount: 125, customerId: 'cust-1'), isTrue);
+    expect(BusinessCalculations.isValidCreditReminder(amount: 0, customerId: 'cust-1'), isFalse);
+    expect(BusinessCalculations.isValidCreditReminder(amount: 125, customerId: ''), isFalse);
+  });
+
   test('ledger balance treats sale due as debit and payments as credit', () {
     final balance = BusinessCalculations.ledgerBalance(opening: 100, entries: [
       {'type': 'SALE_DUE', 'amount': 500},
@@ -62,6 +77,15 @@ void main() {
     expect(RolePermissions.landingDestination('collector'), 4);
   });
 
+  test('collection mutation permissions allow entry for Admin/Collector and removal for Admin only', () {
+    expect(RolePermissions.canCreateMilkCollection('admin'), isTrue);
+    expect(RolePermissions.canCreateMilkCollection('collector'), isTrue);
+    expect(RolePermissions.canCreateMilkCollection('shop'), isFalse);
+    expect(RolePermissions.canRemoveMilkCollection('admin'), isTrue);
+    expect(RolePermissions.canRemoveMilkCollection('collector'), isFalse);
+    expect(RolePermissions.canRemoveMilkCollection('shop'), isFalse);
+  });
+
   test('GPS distance helper returns a real-world distance and readable status', () {
     final meters = distanceMetersBetween(fromLatitude: 27.7172, fromLongitude: 85.3240, toLatitude: 27.7182, toLongitude: 85.3240);
     expect(meters, greaterThan(100));
@@ -94,6 +118,31 @@ void main() {
     expect(message, contains('*Balance due:* NPR 50.00'));
     expect(message, contains('*Payment mode:* Credit'));
     expect(message, contains('*QR payment:* Pending confirmation'));
+  });
+
+  test('WhatsApp templates render customer and order variables', () {
+    final message = WhatsAppService.dailyTransactionMessage(
+      invoiceNumber: 'INV-9',
+      date: DateTime(2026, 8, 15, 9, 30),
+      customerName: 'Maya',
+      items: const [],
+      subtotal: 100,
+      total: 100,
+      paid: 100,
+      template: 'Hello {{customerName}}\\nTotal: {{orderTotal}}\\n{{paymentNote}}',
+    );
+    expect(message, contains('Hello Maya'));
+    expect(message, contains('Total: NPR 100.00'));
+    expect(message, contains('Payment received in full'));
+  });
+
+  test('WhatsApp templates fall back safely for unknown variables', () {
+    expect(WhatsAppService.unsupportedVariables('Hi {{unknown}}'), contains('{{unknown}}'));
+    final message = WhatsAppService.dailyTransactionMessage(
+      invoiceNumber: 'INV-10', date: DateTime(2026, 8, 15), items: const [], subtotal: 0, total: 0, paid: 0, template: 'Hi {{unknown}}',
+    );
+    expect(message, contains('*GAJURMUKHI DAIRY & STORE*'));
+    expect(message, isNot(contains('{{unknown}}')));
   });
 
   test('WhatsApp invoice URI strips formatting and encodes the message', () {

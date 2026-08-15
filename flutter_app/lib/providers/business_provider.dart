@@ -58,9 +58,9 @@ class BusinessProvider extends ChangeNotifier {
   }
 
   Future<void> addProduct(String name, double price, double stock,
-      {String unit='Unit', String category='General'}) async {
+      {String unit='Unit', String category='General', String barcode=''}) async {
     final id = uuid.v4();
-    final row = {'id': id, 'name': name, 'category': category, 'unit': unit, 'sale_price': price, 'purchase_price': 0, 'stock': stock, 'low_stock': 5, 'active': 1};
+    final row = {'id': id, 'name': name, 'category': category, 'unit': unit, 'sale_price': price, 'purchase_price': 0, 'stock': stock, 'low_stock': 5, 'barcode': barcode.trim(), 'active': 1};
     await db.insert('products', row);
     await db.enqueueSync(entity: 'products', entityId: id, operation: 'upsert', payload: row);
     await refresh();
@@ -82,11 +82,23 @@ class BusinessProvider extends ChangeNotifier {
     required double rate,
     required String shift,
   }) async {
+    if (farmerId.trim().isEmpty) throw ArgumentError('Select a farmer before saving');
+    if (litres <= 0) throw ArgumentError('Milk litres must be greater than zero');
+    if (fat <= 0 || snf <= 0) throw ArgumentError('FAT and SNF must be greater than zero');
+    if (rate <= 0) throw ArgumentError('Rate per litre must be greater than zero');
     final now = DateTime.now();
     final id = uuid.v4();
     final row = {'id': id, 'farmer_id': farmerId, 'collection_date': now.toIso8601String().substring(0,10), 'shift': shift, 'litres': litres, 'fat': fat, 'snf': snf, 'rate': rate, 'amount': litres * rate, 'created_at': now.toIso8601String()};
     await db.insert('milk_collections', row);
     await db.enqueueSync(entity: 'milk_collections', entityId: id, operation: 'upsert', payload: row);
+    await refresh();
+  }
+
+  Future<void> removeMilkCollection(String id) async {
+    if (id.trim().isEmpty) throw ArgumentError('Collection id is required');
+    final removed = await db.delete('milk_collections', id);
+    if (removed == 0) throw StateError('Collection record was not found');
+    await db.enqueueSync(entity: 'milk_collections', entityId: id, operation: 'delete', payload: {'id': id});
     await refresh();
   }
 
@@ -129,10 +141,35 @@ class BusinessProvider extends ChangeNotifier {
   }
 
   Future<void> recordExpense(String category, double amount, String method, String note) async {
-    await db.insert('expenses', {
-      'id': uuid.v4(), 'category': category, 'amount': amount,
-      'method': method, 'note': note, 'created_at': DateTime.now().toIso8601String()
+    if (amount <= 0) throw ArgumentError('Payment out amount must be greater than zero');
+    final id = uuid.v4();
+    final row = {'id': id, 'category': category, 'amount': amount, 'method': method, 'note': note, 'created_at': DateTime.now().toIso8601String()};
+    await db.insert('expenses', row);
+    await db.enqueueSync(entity: 'expenses', entityId: id, operation: 'upsert', payload: row);
+    await refresh();
+  }
+
+  Future<void> recordReturn({required String type, required String productId, required double qty, required double amount, String? partyId, String? referenceId, String note = ''}) async {
+    if (qty <= 0 || amount < 0) throw ArgumentError('Return quantity must be greater than zero');
+    if (type != 'SALE_RETURN' && type != 'PURCHASE_RETURN') throw ArgumentError('Unsupported return type');
+    final id = uuid.v4();
+    final now = DateTime.now().toIso8601String();
+    final stockDelta = type == 'SALE_RETURN' ? qty : -qty;
+    await db.db.transaction((txn) async {
+      await txn.rawUpdate('UPDATE products SET stock=MAX(0, stock+?) WHERE id=?', [stockDelta, productId]);
+      await txn.insert('returns', {'id': id, 'type': type, 'product_id': productId, 'qty': qty, 'amount': amount, 'party_id': partyId, 'reference_id': referenceId, 'note': note, 'created_at': now});
+      await txn.insert('stock_movements', {'id': uuid.v4(), 'product_id': productId, 'type': type, 'qty': stockDelta, 'unit_cost': amount / qty, 'reference_id': id, 'note': note, 'created_at': now});
     });
+    await db.enqueueSync(entity: 'returns', entityId: id, operation: 'upsert', payload: {'id': id, 'type': type, 'product_id': productId, 'qty': qty, 'amount': amount, 'party_id': partyId, 'reference_id': referenceId, 'note': note, 'created_at': now});
+    await refresh();
+  }
+
+  Future<void> createCreditReminder({required String customerId, required double amount, required String channel, required String message}) async {
+    if (amount <= 0) throw ArgumentError('Reminder amount must be greater than zero');
+    final id = uuid.v4();
+    final row = {'id': id, 'customer_id': customerId, 'amount': amount, 'channel': channel, 'message': message, 'status': 'PENDING', 'created_at': DateTime.now().toIso8601String()};
+    await db.insert('credit_reminders', row);
+    await db.enqueueSync(entity: 'credit_reminders', entityId: id, operation: 'upsert', payload: row);
     await refresh();
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../providers/business_provider.dart';
+import '../../services/whatsapp_service.dart';
 
 class CustomersScreen extends StatefulWidget {
   final BusinessProvider p;
@@ -36,6 +37,21 @@ class _CustomersScreenState extends State<CustomersScreen> {
     }
   }
 
+  Future<void> _remind(BuildContext context, Map<String, Object?> customer) async {
+    final amount = (customer['balance'] as num?)?.toDouble() ?? 0;
+    if (amount <= 0) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('This customer has no outstanding balance'))); return; }
+    final name = '${customer['name'] ?? 'Customer'}';
+    final message = 'Hello $name, this is a friendly reminder that your outstanding balance is NPR ${amount.toStringAsFixed(2)}. Thank you — Gajurmukhi Dairy & Store.';
+    try {
+      await widget.p.createCreditReminder(customerId: '${customer['id']}', amount: amount, channel: 'WHATSAPP', message: message);
+      final phone = '${customer['phone'] ?? ''}'.trim();
+      if (phone.isEmpty) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reminder saved, but this customer has no phone number'))); return; }
+      await WhatsAppService().openMessage(phone, message);
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not create reminder: $error')));
+    }
+  }
+
   Future<void> _statement(BuildContext context, Map<String, Object?> customer) async {
     final entries = await widget.p.customerLedger('${customer['id']}');
     if (!context.mounted) return;
@@ -56,7 +72,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
       subtitle: Text('${c['phone'] ?? ''}\nOutstanding: NPR ${c['balance'] ?? 0}'),
       isThreeLine: true,
       onTap: () => _statement(context, c),
-      trailing: PopupMenuButton<String>(onSelected: (v) { if (v == 'payment') _record(context, c, advance: false); if (v == 'advance') _record(context, c, advance: true); if (v == 'statement') _statement(context, c); }, itemBuilder: (_) => const [PopupMenuItem(value: 'payment', child: Text('Record payment')), PopupMenuItem(value: 'advance', child: Text('Record advance')), PopupMenuItem(value: 'statement', child: Text('View statement'))]),
+      trailing: PopupMenuButton<String>(onSelected: (v) { if (v == 'payment') _record(context, c, advance: false); if (v == 'advance') _record(context, c, advance: true); if (v == 'statement') _statement(context, c); if (v == 'remind') _remind(context, c); }, itemBuilder: (_) => const [PopupMenuItem(value: 'payment', child: Text('Record payment')), PopupMenuItem(value: 'advance', child: Text('Record advance')), PopupMenuItem(value: 'statement', child: Text('View statement')), PopupMenuItem(value: 'remind', child: Text('Send credit reminder'))]),
     )))
   ]);
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../providers/business_provider.dart';
 import '../../services/printing_service.dart';
@@ -16,11 +17,37 @@ class _BillingScreenState extends State<BillingScreen> {
   final search = TextEditingController();
   final customerPhone = TextEditingController();
   final upiId = TextEditingController();
+  final whatsappTemplate = TextEditingController(text: WhatsAppService.defaultTemplate);
   final List<Map<String, dynamic>> cart = [];
   String payment = 'CASH';
   double discount = 0;
   double paid = 0;
   String? selectedCustomerId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWhatsAppTemplate();
+  }
+
+  Future<void> _loadWhatsAppTemplate() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString('whatsapp_template');
+    if (!mounted || saved == null) return;
+    whatsappTemplate.text = WhatsAppService.normalizeTemplate(saved);
+    setState(() {});
+  }
+
+  Future<void> _saveWhatsAppTemplate() async {
+    final unsupported = WhatsAppService.unsupportedVariables(whatsappTemplate.text);
+    if (unsupported.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Unsupported variables: ${unsupported.join(', ')}')));
+      return;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('whatsapp_template', whatsappTemplate.text.trim());
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('WhatsApp template saved')));
+  }
 
   double get subtotal => cart.fold(0, (s, i) => s + (i['total'] as num).toDouble());
   double get total => (subtotal - discount).clamp(0, double.infinity);
@@ -42,6 +69,7 @@ class _BillingScreenState extends State<BillingScreen> {
     search.dispose();
     customerPhone.dispose();
     upiId.dispose();
+    whatsappTemplate.dispose();
     super.dispose();
   }
 
@@ -100,6 +128,7 @@ class _BillingScreenState extends State<BillingScreen> {
       paymentMethod: payment,
       upiId: upiId.text.trim().isEmpty ? null : upiId.text.trim(),
       qrStatus: qrStatus,
+      template: whatsappTemplate.text,
     );
     await WhatsAppService().openMessage(customerPhone.text.trim(), message);
   }
@@ -246,6 +275,24 @@ class _BillingScreenState extends State<BillingScreen> {
                           },
                     icon: const Icon(Icons.print),
                     label: const Text('A4 Preview / Print'),
+                  ),
+                  const SizedBox(height: 8),
+                  ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    title: const Text('Customize WhatsApp message'),
+                    subtitle: const Text('Use {{customerName}}, {{orderTotal}}, {{items}}, and more'),
+                    children: [
+                      TextField(
+                        controller: whatsappTemplate,
+                        minLines: 6,
+                        maxLines: 12,
+                        decoration: const InputDecoration(labelText: 'Message template', alignLabelWithHint: true, border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 6),
+                      Align(alignment: Alignment.centerLeft, child: Text('Supported: ${WhatsAppService.supportedVariables.join('  ')}', style: const TextStyle(fontSize: 11, color: Colors.black54))),
+                      const SizedBox(height: 6),
+                      Align(alignment: Alignment.centerRight, child: OutlinedButton.icon(onPressed: _saveWhatsAppTemplate, icon: const Icon(Icons.save), label: const Text('Save template'))),
+                    ],
                   ),
                   OutlinedButton.icon(
                     onPressed: cart.isEmpty ? null : shareWhatsApp,
