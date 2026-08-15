@@ -55,6 +55,12 @@ void main() {
     expect(RolePermissions.canAccess('collector', 1), isFalse);
   });
 
+  test('login routing lands collectors on collection and staff on overview', () {
+    expect(RolePermissions.landingDestination('admin'), 0);
+    expect(RolePermissions.landingDestination('shop'), 0);
+    expect(RolePermissions.landingDestination('collector'), 4);
+  });
+
   test('WhatsApp daily summary includes itemized payment details', () {
     final message = WhatsAppService.dailyTransactionMessage(
       invoiceNumber: 'INV-2026-001',

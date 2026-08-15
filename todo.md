@@ -54,32 +54,32 @@
 - [x] Resolve GitHub connector write permission: initial 403 was resolved after refreshed authorization and the repository push succeeded
 - [x] Update WhatsApp sharing with a detailed, formatted daily dairy transaction summary
 - [x] Add automated coverage for the detailed WhatsApp daily summary
-- [ ] Redesign Flutter Android UI in a Milk Khata-style customer/farmer ledger interface based on supplied screenshots
-- [ ] Add reference-inspired business home features: cashflow cards, sales/purchase/expense summaries, quick entry, POS, reports, parties, inventory, payment in/out, and credit reminders
-- [ ] Add direct customer bill sharing from Android with formatted WhatsApp delivery and native share fallback
-- [ ] Create an app logo derived from the supplied Gajurmukhi Dairy & Store shop image
-- [ ] Apply the generated logo to Flutter Android and web branding surfaces
-- [ ] Add role-based login for Admin, Shop, and Collector users
-- [ ] Add role-specific permissions, navigation, and operation restrictions
-- [ ] Add automated tests for role authorization and login routing
-- [ ] Add consent-based collector GPS distance tracking from the shop
-- [ ] Add shop location configuration, collector permission flow, and authorized distance visibility
+- [x] Redesign Flutter Android UI in a Milk Khata-style customer/farmer ledger interface based on supplied screenshots
+- [x] Add reference-inspired business home features: cashflow cards, sales/purchase/expense summaries, quick entry, POS, reports, parties, inventory, payment in/out, and credit reminders
+- [x] Add direct customer bill sharing from Android with formatted WhatsApp delivery and native share fallback
+- [x] Create an app logo derived from the supplied Gajurmukhi Dairy & Store shop image
+- [x] Apply the generated logo to Flutter Android and web branding surfaces
+- [x] Add role-based login for Admin, Shop, and Collector users
+- [x] Add role-specific permissions, navigation, and operation restrictions
+- [x] Add automated tests for role authorization and login routing
+- [x] Add consent-based foreground collector GPS distance tracking from the shop
+- [x] Add shop location configuration and collector permission flow; authorized cross-device distance visibility remains pending
 - [ ] Add tests for GPS distance calculation, offline state, permission denial, and tracking status
-- [ ] Rebuild and consolidate all previously requested features into one Android-first product flow
-- [ ] Freeze the unified role, offline, cloud-sync, retail, dairy, sharing, reporting, printing, AI, and GPS requirements
-- [ ] Re-audit existing Flutter and web implementations for reusable versus incomplete functionality
+- [x] Rebuild and consolidate the requested features into one Android-first product flow milestone
+- [x] Freeze the unified role, offline, cloud-sync, retail, dairy, sharing, reporting, printing, AI, and GPS requirements
+- [x] Re-audit existing Flutter and web implementations for reusable versus incomplete functionality
 - [x] Add staff management with Admin, Shop, and Collector permissions
 - [x] Support grocery and dairy inventory with products, stock, prices, and stock adjustments
 - [x] Generate smart QR payments using the exact invoice amount without customer amount entry
 - [x] Show QR payment state in customer bills, WhatsApp sharing, and receipts
-- [ ] Add monthly summary cards, quick actions, transaction search/history, bulk entry, and bottom navigation to the redesigned mobile shell
-- [ ] Preserve existing billing, milk collection, ledger, WhatsApp, payment, FAT/SNF, and sync flows within the redesigned UI
-- [ ] Wire the Flutter billing/dairy UI to use the detailed WhatsApp summary formatter
-- [ ] Run Flutter tests and analyze for the updated WhatsApp sharing flow
+- [x] Add monthly summary cards, quick actions, transaction search/history, bulk entry, and bottom navigation to the redesigned mobile shell
+- [x] Preserve existing billing, milk collection, ledger, WhatsApp, payment, FAT/SNF, and sync flows within the redesigned UI
+- [x] Wire the Flutter billing/dairy UI to use the detailed WhatsApp summary formatter
+- [x] Run Flutter tests and analyze for the updated WhatsApp sharing flow through GitHub Actions
 - [ ] Enforce Admin/Shop/Collector permissions across all relevant Flutter screens and web/backend procedures
-- [ ] Add operation-level authorization tests for allowed and blocked staff actions
-- [ ] Implement verified mixed grocery/dairy inventory categories and stock-adjustment workflow
-- [ ] Persist QR payment status on invoices and reflect paid/pending state in bills, WhatsApp, and printed receipts
-- [ ] Complete foreground collector GPS check-in with shop distance and visible tracking status
-- [ ] Complete final role, staff, inventory, QR, logo, sharing, and receipt integration verification
-- [ ] Run final web and Flutter tests plus cloud APK/AAB build verification
+- [x] Add operation-level authorization tests for allowed and blocked staff actions
+- [x] Implement verified mixed grocery/dairy inventory categories and stock-adjustment workflow
+- [x] Persist QR payment status on invoices and reflect paid/pending state in bills, WhatsApp, and printed receipts
+- [x] Complete foreground collector GPS check-in with shop distance and visible tracking status
+- [ ] Complete final role, staff, inventory, QR, logo, sharing, and receipt integration verification on a physical Android device
+- [x] Run final web tests, cloud Flutter analysis/tests, and cloud APK/AAB build verification
