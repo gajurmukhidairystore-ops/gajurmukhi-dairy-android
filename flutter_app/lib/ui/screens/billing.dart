@@ -18,10 +18,18 @@ class _BillingScreenState extends State<BillingScreen> {
   String payment = 'CASH';
   double discount = 0;
   double paid = 0;
+  String? selectedCustomerId;
 
   double get subtotal => cart.fold(0, (s, i) => s + (i['total'] as num).toDouble());
   double get total => (subtotal - discount).clamp(0, double.infinity);
-  double get due => (total - paid).clamp(0, double.infinity);
+  double get due => (total - paid).clamp(0, double.infinity).toDouble();
+
+  Map<String, Object?>? customerById(String? id) {
+    for (final customer in widget.p.customers) {
+      if ('${customer['id']}' == id) return customer;
+    }
+    return null;
+  }
 
   @override
   void dispose() {
@@ -52,7 +60,7 @@ class _BillingScreenState extends State<BillingScreen> {
   Future<void> save() async {
     if (cart.isEmpty) return;
     await widget.p.createInvoice(
-      customerId: null,
+      customerId: selectedCustomerId,
       items: cart,
       discount: discount,
       paid: paid,
@@ -69,7 +77,7 @@ class _BillingScreenState extends State<BillingScreen> {
     final message = WhatsAppService.dailyTransactionMessage(
       invoiceNumber: invoiceNumber,
       date: DateTime.now(),
-      customerName: 'Walk-in Customer',
+      customerName: '${customerById(selectedCustomerId)?['name'] ?? 'Walk-in Customer'}',
       customerPhone: customerPhone.text.trim().isEmpty ? null : customerPhone.text.trim(),
       items: cart.map((item) => <String, Object?>{
         'name': item['name'],
@@ -156,6 +164,22 @@ class _BillingScreenState extends State<BillingScreen> {
                     ],
                     onChanged: (v) => setState(() => payment = v!),
                     decoration: const InputDecoration(labelText: 'Payment'),
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedCustomerId,
+                    decoration: const InputDecoration(labelText: 'Customer / party'),
+                    hint: const Text('Walk-in customer'),
+                    items: widget.p.customers
+                        .map((customer) => DropdownMenuItem<String>(value: '${customer['id']}', child: Text('${customer['name']}')))
+                        .toList(),
+                    onChanged: (value) {
+                      final customer = customerById(value);
+                      setState(() {
+                        selectedCustomerId = value;
+                        customerPhone.text = '${customer?['phone'] ?? ''}';
+                      });
+                    },
                   ),
                   const SizedBox(height: 8),
                   TextField(

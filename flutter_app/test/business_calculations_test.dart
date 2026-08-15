@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gajurmukhi_dairy_business_pro/core/business_calculations.dart';
 import 'package:gajurmukhi_dairy_business_pro/services/sync_coordinator.dart';
 import 'package:gajurmukhi_dairy_business_pro/services/whatsapp_service.dart';
+import 'package:gajurmukhi_dairy_business_pro/services/role_permissions.dart';
 
 void main() {
   test('invoice totals and due are never negative', () {
@@ -44,6 +45,14 @@ void main() {
     expect(envelope['sync_id'], 'queue-7');
     expect(envelope['entity_id'], 'invoice-12');
     expect(envelope['payload'], {'total': 250, 'paid': 200});
+  });
+
+  test('role permissions separate admin, shop, and collector workflows', () {
+    expect(RolePermissions.canAccess('admin', 6), isTrue);
+    expect(RolePermissions.canAccess('shop', 1), isTrue);
+    expect(RolePermissions.canAccess('shop', 4), isFalse);
+    expect(RolePermissions.canAccess('collector', 4), isTrue);
+    expect(RolePermissions.canAccess('collector', 1), isFalse);
   });
 
   test('WhatsApp daily summary includes itemized payment details', () {

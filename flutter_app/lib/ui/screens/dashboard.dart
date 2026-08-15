@@ -138,10 +138,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         onSelected: (value) {
                           if (value == 'stock') open(3);
                           if (value == 'ai') open(6);
+                          if (value == 'expenses') open(7);
                         },
                         itemBuilder: (_) => const [
                           PopupMenuItem(value: 'stock', child: Text('Stock & products')),
                           PopupMenuItem(value: 'ai', child: Text('AI assistant')),
+                          PopupMenuItem(value: 'expenses', child: Text('Expenses & payment out')),
                         ],
                       ),
                     ],

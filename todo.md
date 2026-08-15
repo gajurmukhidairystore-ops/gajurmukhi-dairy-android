@@ -55,6 +55,19 @@
 - [x] Update WhatsApp sharing with a detailed, formatted daily dairy transaction summary
 - [x] Add automated coverage for the detailed WhatsApp daily summary
 - [ ] Redesign Flutter Android UI in a Milk Khata-style customer/farmer ledger interface based on supplied screenshots
+- [ ] Add reference-inspired business home features: cashflow cards, sales/purchase/expense summaries, quick entry, POS, reports, parties, inventory, payment in/out, and credit reminders
+- [ ] Add direct customer bill sharing from Android with formatted WhatsApp delivery and native share fallback
+- [ ] Create an app logo derived from the supplied Gajurmukhi Dairy & Store shop image
+- [ ] Apply the generated logo to Flutter Android and web branding surfaces
+- [ ] Add role-based login for Admin, Shop, and Collector users
+- [ ] Add role-specific permissions, navigation, and operation restrictions
+- [ ] Add automated tests for role authorization and login routing
+- [ ] Add consent-based collector GPS distance tracking from the shop
+- [ ] Add shop location configuration, collector permission flow, and authorized distance visibility
+- [ ] Add tests for GPS distance calculation, offline state, permission denial, and tracking status
+- [ ] Rebuild and consolidate all previously requested features into one Android-first product flow
+- [ ] Freeze the unified role, offline, cloud-sync, retail, dairy, sharing, reporting, printing, AI, and GPS requirements
+- [ ] Re-audit existing Flutter and web implementations for reusable versus incomplete functionality
 - [ ] Add monthly summary cards, quick actions, transaction search/history, bulk entry, and bottom navigation to the redesigned mobile shell
 - [ ] Preserve existing billing, milk collection, ledger, WhatsApp, payment, FAT/SNF, and sync flows within the redesigned UI
 - [ ] Wire the Flutter billing/dairy UI to use the detailed WhatsApp summary formatter
