@@ -1,0 +1,83 @@
+name: Gajurmukhi three-app Android builds
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "apps/**"
+      - ".github/workflows/three-apps-android.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gajurmukhi-three-apps-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: collection_inventory
+            name: Gajurmukhi Admin
+            id: com.gajurmukhi.admin
+          - app: shop_counter
+            name: Gajurmukhi Store
+            id: com.gajurmukhi.store
+          - app: customer_ordering
+            name: Gajurmukhi Customer
+            id: com.gajurmukhi.customer
+    defaults:
+      run:
+        working-directory: apps/${{ matrix.app }}/flutter_app
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: "3.47.0"
+          cache: true
+
+      - name: Set unique Android application ID
+        working-directory: apps/${{ matrix.app }}/flutter_app/android/app
+        env:
+          APPLICATION_ID: ${{ matrix.id }}
+        run: |
+          sed -i "s/applicationId = \"com.example.gajurmukhi_dairy_business_pro\"/applicationId = \"$APPLICATION_ID\"/" build.gradle.kts
+          sed -i "s/namespace = \"com.example.gajurmukhi_dairy_business_pro\"/namespace = \"$APPLICATION_ID\"/" build.gradle.kts
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Analyze Dart and Flutter source
+        run: flutter analyze
+
+      - name: Run deterministic tests
+        run: flutter test
+
+      - name: Build debug APK
+        run: flutter build apk --debug
+
+      - name: Rename individual APK
+        run: cp build/app/outputs/flutter-apk/app-debug.apk "build/app/outputs/flutter-apk/${{ matrix.name }}.apk"
+
+      - name: Upload individual APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}-apk
+          if-no-files-found: error
+          path: apps/${{ matrix.app }}/flutter_app/build/app/outputs/flutter-apk/${{ matrix.name }}.apk
