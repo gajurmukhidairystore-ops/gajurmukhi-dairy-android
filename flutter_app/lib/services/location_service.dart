@@ -2,6 +2,12 @@ import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+double distanceMetersBetween({required double fromLatitude, required double fromLongitude, required double toLatitude, required double toLongitude}) {
+  return Geolocator.distanceBetween(fromLatitude, fromLongitude, toLatitude, toLongitude);
+}
+
+String formatDistanceMeters(double meters) => meters >= 1000 ? '${(meters / 1000).toStringAsFixed(2)} km' : '${meters.round()} m';
+
 class ShopCoordinate {
   final double latitude;
   final double longitude;
@@ -12,7 +18,7 @@ class ShopDistance {
   final double meters;
   final Position position;
   const ShopDistance(this.meters, this.position);
-  String get label => meters >= 1000 ? '${(meters / 1000).toStringAsFixed(2)} km' : '${meters.round()} m';
+  String get label => formatDistanceMeters(meters);
 }
 
 class ForegroundLocationService {
@@ -52,7 +58,7 @@ class ForegroundLocationService {
     if (shop == null) return false;
     await _subscription?.cancel();
     _subscription = Geolocator.getPositionStream(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 20)).listen((position) {
-      final meters = Geolocator.distanceBetween(shop.latitude, shop.longitude, position.latitude, position.longitude);
+      final meters = distanceMetersBetween(fromLatitude: shop.latitude, fromLongitude: shop.longitude, toLatitude: position.latitude, toLongitude: position.longitude);
       _updates.add(ShopDistance(meters, position));
     });
     return true;

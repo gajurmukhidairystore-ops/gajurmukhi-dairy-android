@@ -3,6 +3,7 @@ import 'package:gajurmukhi_dairy_business_pro/core/business_calculations.dart';
 import 'package:gajurmukhi_dairy_business_pro/services/sync_coordinator.dart';
 import 'package:gajurmukhi_dairy_business_pro/services/whatsapp_service.dart';
 import 'package:gajurmukhi_dairy_business_pro/services/role_permissions.dart';
+import 'package:gajurmukhi_dairy_business_pro/services/location_service.dart';
 
 void main() {
   test('invoice totals and due are never negative', () {
@@ -59,6 +60,12 @@ void main() {
     expect(RolePermissions.landingDestination('admin'), 0);
     expect(RolePermissions.landingDestination('shop'), 0);
     expect(RolePermissions.landingDestination('collector'), 4);
+  });
+
+  test('GPS distance helper returns a real-world distance and readable status', () {
+    final meters = distanceMetersBetween(fromLatitude: 27.7172, fromLongitude: 85.3240, toLatitude: 27.7182, toLongitude: 85.3240);
+    expect(meters, greaterThan(100));
+    expect(formatDistanceMeters(meters), contains('m'));
   });
 
   test('WhatsApp daily summary includes itemized payment details', () {
