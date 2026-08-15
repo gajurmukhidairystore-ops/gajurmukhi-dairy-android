@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../providers/business_provider.dart';
 import '../../services/printing_service.dart';
@@ -14,6 +15,7 @@ class BillingScreen extends StatefulWidget {
 class _BillingScreenState extends State<BillingScreen> {
   final search = TextEditingController();
   final customerPhone = TextEditingController();
+  final upiId = TextEditingController();
   final List<Map<String, dynamic>> cart = [];
   String payment = 'CASH';
   double discount = 0;
@@ -23,6 +25,8 @@ class _BillingScreenState extends State<BillingScreen> {
   double get subtotal => cart.fold(0, (s, i) => s + (i['total'] as num).toDouble());
   double get total => (subtotal - discount).clamp(0, double.infinity);
   double get due => (total - paid).clamp(0, double.infinity).toDouble();
+
+  String get paymentQrData => 'upi://pay?pa=${Uri.encodeComponent(upiId.text.trim())}&pn=${Uri.encodeComponent('Gajurmukhi Dairy & Store')}&am=${total.toStringAsFixed(2)}&cu=INR&tn=${Uri.encodeComponent('Gajurmukhi bill')}';
 
   Map<String, Object?>? customerById(String? id) {
     for (final customer in widget.p.customers) {
@@ -35,6 +39,7 @@ class _BillingScreenState extends State<BillingScreen> {
   void dispose() {
     search.dispose();
     customerPhone.dispose();
+    upiId.dispose();
     super.dispose();
   }
 
@@ -90,6 +95,7 @@ class _BillingScreenState extends State<BillingScreen> {
       paid: paid,
       due: due,
       paymentMethod: payment,
+      upiId: upiId.text.trim().isEmpty ? null : upiId.text.trim(),
     );
     await WhatsAppService().openMessage(customerPhone.text.trim(), message);
   }
@@ -166,6 +172,29 @@ class _BillingScreenState extends State<BillingScreen> {
                     decoration: const InputDecoration(labelText: 'Payment'),
                   ),
                   const SizedBox(height: 8),
+                  if (payment == 'QR') ...[
+                    TextField(
+                      controller: upiId,
+                      onChanged: (_) => setState(() {}),
+                      decoration: const InputDecoration(labelText: 'Shop UPI / payment ID', prefixIcon: Icon(Icons.qr_code_2)),
+                    ),
+                    if (upiId.text.trim().isNotEmpty)
+                      Card(
+                        color: const Color(0xfff1fbf5),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(children: [
+                            const Text('Customer scans this QR. The invoice amount is already filled in.', textAlign: TextAlign.center),
+                            const SizedBox(height: 8),
+                            QrImageView(data: paymentQrData, size: 190, backgroundColor: Colors.white),
+                            Text('Exact amount: NPR ${total.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 6),
+                            OutlinedButton.icon(onPressed: total <= 0 ? null : () => setState(() => paid = total), icon: const Icon(Icons.verified), label: const Text('Mark QR payment received')),
+                          ]),
+                        ),
+                      ),
+                    const SizedBox(height: 8),
+                  ],
                   DropdownButtonFormField<String>(
                     initialValue: selectedCustomerId,
                     decoration: const InputDecoration(labelText: 'Customer / party'),
