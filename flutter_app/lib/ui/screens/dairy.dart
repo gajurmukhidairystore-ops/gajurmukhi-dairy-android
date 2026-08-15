@@ -42,6 +42,7 @@ class _DairyScreenState extends State<DairyScreen> {
     if (!mounted) return;
     if (position == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enable location permission and GPS first'))); return; }
     await location.saveShopLocation(position);
+    if (!mounted) return;
     setState(() => shopConfigured = true);
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Shop location saved on this device')));
   }
