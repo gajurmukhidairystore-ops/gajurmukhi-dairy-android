@@ -61,12 +61,31 @@ class _StockScreenState extends State<StockScreen> {
         const SizedBox(height: 4),
         const Text('Manage grocery, dairy, household, and other shop products.'),
         const SizedBox(height: 12),
-        SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: ['All', 'Grocery', 'Dairy', 'Household', 'Other'].map((value) => Padding(padding: const EdgeInsets.only(right: 8), child: ChoiceChip(label: Text(value), selected: filter == value, onSelected: (_) => setState(() => filter = value))).toList())),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: ['All', 'Grocery', 'Dairy', 'Household', 'Other'].map((value) => Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(label: Text(value), selected: filter == value, onSelected: (_) => setState(() => filter = value)),
+            )).toList(),
+          ),
+        ),
         const SizedBox(height: 12),
         ...products.map((x) {
           final stock = (x['stock'] as num?)?.toDouble() ?? 0;
           final low = (x['low_stock'] as num?)?.toDouble() ?? 5;
-          return Card(child: ListTile(leading: CircleAvatar(child: Icon('${x['category']}' == 'Grocery' ? Icons.shopping_basket : Icons.local_drink)), title: Text('${x['name']}'), subtitle: Text('${x['category']} • ${x['unit']} • Sale NPR ${x['sale_price']}'), trailing: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Text(stock.toStringAsFixed(2), style: const TextStyle(fontWeight: FontWeight.bold)), Text(stock <= low ? 'LOW STOCK' : 'OK', style: TextStyle(color: stock <= low ? Colors.orange : Colors.green))]), onTap: () => adjust(x)));
+          return Card(
+            child: ListTile(
+              leading: CircleAvatar(child: Icon('${x['category']}' == 'Grocery' ? Icons.shopping_basket : Icons.local_drink)),
+              title: Text('${x['name']}'),
+              subtitle: Text('${x['category']} • ${x['unit']} • Sale NPR ${x['sale_price']}'),
+              trailing: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Text(stock.toStringAsFixed(2), style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(stock <= low ? 'LOW STOCK' : 'OK', style: TextStyle(color: stock <= low ? Colors.orange : Colors.green)),
+              ]),
+              onTap: () => adjust(x),
+            ),
+          );
         }),
         if (products.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Text('No products in this category yet.')),
       ]),
