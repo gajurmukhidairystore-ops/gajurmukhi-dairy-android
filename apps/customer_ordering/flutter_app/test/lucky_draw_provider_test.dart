@@ -42,7 +42,7 @@ void main() {
     provider.luckyDrawWinners = [
       {'id': 'winner-1', 'draw_id': 'draw-1', 'prize_id': 'p1', 'token_number': 'GJ-VIEW', 'masked_name': 'A*** R**'},
     ];
-    await tester.pumpWidget(MaterialApp(home: LuckyDrawScreen(role: 'customer', providerOverride: provider)));
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: LuckyDrawScreen(role: 'customer', providerOverride: provider))));
     await tester.pumpAndSettle();
     expect(find.text('Lucky Draw'), findsOneWidget);
     expect(find.text('Customer: draw details and token status'), findsOneWidget);
