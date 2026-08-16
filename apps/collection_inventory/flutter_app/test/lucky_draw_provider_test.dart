@@ -43,6 +43,7 @@ void main() {
     expect(find.text('Test Monthly Draw · PUBLISHED'), findsOneWidget);
     expect(find.textContaining('Draw date: 2026-08-31'), findsOneWidget);
     expect(find.textContaining('1st Prize'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('A*** R** · Public masked name only'), 300, scrollable: find.byType(Scrollable).first);
     expect(find.text('A*** R** · Public masked name only'), findsOneWidget);
     await tester.enterText(find.byType(TextField).last, 'GJ-VIEW');
     await tester.tap(find.text('Check token status'));
