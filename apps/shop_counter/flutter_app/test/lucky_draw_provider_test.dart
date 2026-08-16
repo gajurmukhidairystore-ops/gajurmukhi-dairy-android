@@ -15,19 +15,12 @@ void main() {
     final db = AppDatabase();
     await db.init(path: inMemoryDatabasePath);
     final provider = BusinessProvider(db);
-    await provider.bootstrap();
-    final drawId = await provider.createLuckyDraw(
-      monthKey: 'test-${DateTime.now().microsecondsSinceEpoch}',
-      monthLabel: 'Test Monthly Draw',
-      announcement: 'Thank you',
-      drawDate: DateTime.now().subtract(const Duration(days: 1)),
-      prizes: const [
-        {'title': '1st Prize', 'description': 'Mixer'},
-        {'title': '2nd Prize', 'description': 'Basket'},
-        {'title': '3rd Prize', 'description': 'Voucher'},
-      ],
-      createdBy: 'admin',
-    );
+    const drawId = 'draw-integration';
+    await db.insert('lucky_draws', {'id': drawId, 'month_key': 'integration', 'month_label': 'Integration Draw', 'minimum_purchase': 1000, 'announcement': 'Thank you', 'draw_date': DateTime(2026, 8, 1).toIso8601String(), 'status': 'OPEN', 'created_by': 'admin', 'created_at': DateTime(2026, 7, 1).toIso8601String()});
+    for (var rank = 1; rank <= 3; rank++) {
+      await db.insert('lucky_draw_prizes', {'id': 'prize-$rank', 'draw_id': drawId, 'prize_rank': rank, 'prize_title': '$rank Prize', 'prize_description': 'Prize $rank', 'active': 1});
+    }
+    await provider.refresh();
     return (db, provider, drawId);
   }
 
@@ -58,23 +51,16 @@ void main() {
   });
 
   testWidgets('customer screen renders draw details, token lookup, and public masked winner', (tester) async {
-    final (db, provider, drawId) = await seededProvider();
-    try {
-      await provider.issueLuckyToken(drawId: drawId, purchaseTotal: 1000, customerName: 'Asha Rai', identityReference: '/private/id-a.jpg', identityType: 'Citizenship', consented: true, issuedBy: 'shop', tokenNumber: 'GJ-VIEW');
-      final draw = provider.luckyDraws.single;
-      final prize = provider.luckyDrawPrizes.first;
-      final token = provider.luckyDrawTokens.single;
-      await db.insert('lucky_draw_winners', {'id': 'winner-1', 'draw_id': draw['id'], 'prize_id': prize['id'], 'token_id': token['id'], 'token_number': 'GJ-VIEW', 'masked_name': 'A*** R**', 'selected_at': DateTime.now().toIso8601String()});
-      await db.update('lucky_draws', {'status': 'PUBLISHED'}, '${draw['id']}');
-      await provider.refresh();
-      await tester.pumpWidget(MaterialApp(home: Scaffold(body: LuckyDrawScreen(role: 'customer', providerOverride: provider))));
-      await tester.pumpAndSettle();
-      expect(find.text('Test Monthly Draw · PUBLISHED'), findsOneWidget);
-      expect(find.textContaining('Draw date:'), findsOneWidget);
-      await tester.scrollUntilVisible(find.text('Public winner: GJ-VIEW · A*** R**'), 300, scrollable: find.byType(ListView));
-      expect(find.text('Public winner: GJ-VIEW · A*** R**'), findsOneWidget);
-    } finally {
-      await db.db.close();
-    }
+    final provider = BusinessProvider(AppDatabase());
+    provider.luckyDraws = [{'id': 'draw-1', 'month_label': 'Test Monthly Draw', 'status': 'PUBLISHED', 'draw_date': '2026-08-31', 'announcement': 'Thank you'}];
+    provider.luckyDrawPrizes = [{'id': 'p1', 'draw_id': 'draw-1', 'prize_rank': 1, 'prize_title': '1st Prize', 'prize_description': 'Mixer'}];
+    provider.luckyDrawTokens = [{'id': 'token-1', 'draw_id': 'draw-1', 'token_number': 'GJ-VIEW', 'status': 'WON', 'customer_name': 'Asha Rai'}];
+    provider.luckyDrawWinners = [{'id': 'winner-1', 'draw_id': 'draw-1', 'prize_id': 'p1', 'token_number': 'GJ-VIEW', 'masked_name': 'A*** R**'}];
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: LuckyDrawScreen(role: 'customer', providerOverride: provider))));
+    await tester.pumpAndSettle();
+    expect(find.text('Test Monthly Draw · PUBLISHED'), findsOneWidget);
+    expect(find.textContaining('Draw date:'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Public winner: GJ-VIEW · A*** R**'), 300, scrollable: find.byType(ListView));
+    expect(find.text('Public winner: GJ-VIEW · A*** R**'), findsOneWidget);
   });
 }
