@@ -44,7 +44,7 @@ void main() {
     expect(find.textContaining('Draw date: 2026-08-31'), findsOneWidget);
     expect(find.textContaining('1st Prize'), findsOneWidget);
     expect(find.text('Public winner: GJ-VIEW · A*** R**'), findsOneWidget);
-    await tester.enterText(find.byType(TextField).last, 'GJ-VIEW');
+    await tester.enterText(find.byKey(const Key('lucky-draw-token-lookup')), 'GJ-VIEW');
     await tester.tap(find.text('Check token status'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Token GJ-VIEW'), findsOneWidget);
