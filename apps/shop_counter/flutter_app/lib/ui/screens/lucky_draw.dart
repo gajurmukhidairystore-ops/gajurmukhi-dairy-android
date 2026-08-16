@@ -5,7 +5,8 @@ import '../../providers/business_provider.dart';
 
 class LuckyDrawScreen extends StatefulWidget {
   final String role;
-  const LuckyDrawScreen({super.key, required this.role});
+  final BusinessProvider? providerOverride;
+  const LuckyDrawScreen({super.key, required this.role, this.providerOverride});
 
   @override
   State<LuckyDrawScreen> createState() => _LuckyDrawScreenState();
@@ -83,7 +84,7 @@ class _LuckyDrawScreenState extends State<LuckyDrawScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final p = context.watch<BusinessProvider>();
+    final p = widget.providerOverride ?? context.watch<BusinessProvider>();
     final draw = p.luckyDraws.isEmpty ? null : p.luckyDraws.first;
     final winners = draw == null ? const <Map<String, Object?>>[] : p.luckyDrawWinners.where((winner) => '${winner['draw_id']}' == '${draw['id']}').toList();
     final tokens = draw == null ? const <Map<String, Object?>>[] : p.luckyDrawTokens.where((token) => '${token['draw_id']}' == '${draw['id']}').toList();

@@ -260,6 +260,17 @@ class BusinessProvider extends ChangeNotifier {
     return drawId;
   }
 
+  static void validateLuckyTokenRegistration({required double purchaseTotal, required String customerName, required String identityReference, required bool consented}) {
+    if (!LuckyDrawService.isEligiblePurchase(purchaseTotal)) throw ArgumentError('A purchase of NPR 1,000 or more is required');
+    if (customerName.trim().isEmpty) throw ArgumentError('Customer name is required');
+    if (identityReference.trim().isEmpty) throw ArgumentError('Identity photo or document reference is required');
+    if (!consented) throw ArgumentError('Customer consent is required before storing identity information');
+  }
+
+  static bool canReadLuckyDrawIdentity(String role) => LuckyDrawService.canAccessIdentityRecords(role);
+
+  static bool canDeleteLuckyDrawIdentity(String role) => LuckyDrawService.canDeleteIdentityRecord(role);
+
   Future<String> issueLuckyToken({
     required String drawId,
     required double purchaseTotal,
@@ -272,10 +283,7 @@ class BusinessProvider extends ChangeNotifier {
     required String issuedBy,
     String? tokenNumber,
   }) async {
-    if (!LuckyDrawService.isEligiblePurchase(purchaseTotal)) throw ArgumentError('A purchase of NPR 1,000 or more is required');
-    if (customerName.trim().isEmpty) throw ArgumentError('Customer name is required');
-    if (identityReference.trim().isEmpty) throw ArgumentError('Identity photo or document reference is required');
-    if (!consented) throw ArgumentError('Customer consent is required before storing identity information');
+    validateLuckyTokenRegistration(purchaseTotal: purchaseTotal, customerName: customerName, identityReference: identityReference, consented: consented);
     final drawRows = await db.query('lucky_draws', where: 'id=? AND status=?', args: [drawId, 'OPEN']);
     if (drawRows.isEmpty) throw StateError('This lucky draw is not open');
     final id = uuid.v4();
@@ -299,12 +307,12 @@ class BusinessProvider extends ChangeNotifier {
   }
 
   Future<List<Map<String, Object?>>> privateLuckyDrawIdentityRecords(String role) async {
-    if (!LuckyDrawService.canAccessIdentityRecords(role)) throw StateError('Only Admin or Store staff can access identity records');
+    if (!canReadLuckyDrawIdentity(role)) throw StateError('Only Admin or Store staff can access identity records');
     return db.query('lucky_draw_identity_records', where: 'deleted_at IS NULL', orderBy: 'created_at DESC');
   }
 
   Future<void> deleteLuckyDrawIdentityRecord(String role, String id) async {
-    if (!LuckyDrawService.canDeleteIdentityRecord(role)) throw StateError('Only Admin can delete identity records');
+    if (!canDeleteLuckyDrawIdentity(role)) throw StateError('Only Admin can delete identity records');
     await db.update('lucky_draw_identity_records', {'deleted_at': DateTime.now().toIso8601String(), 'private_reference': '[deleted]'}, id);
     await db.enqueueSync(entity: 'lucky_draw_identity_records', entityId: id, operation: 'delete', payload: {'id': id});
     await refresh();
