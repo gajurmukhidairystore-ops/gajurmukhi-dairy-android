@@ -339,7 +339,9 @@ class BusinessProvider extends ChangeNotifier {
       }
       await txn.update('lucky_draws', {'status': 'PUBLISHED', 'published_at': now}, where: 'id=?', whereArgs: [drawId]);
     });
-    for (final row in winnerRows) await db.enqueueSync(entity: 'lucky_draw_winners', entityId: '${row['id']}', operation: 'upsert', payload: row);
+    for (final row in winnerRows) {
+      await db.enqueueSync(entity: 'lucky_draw_winners', entityId: '${row['id']}', operation: 'upsert', payload: row);
+    }
     await refresh();
     final draw = draws.first;
     return LuckyDrawService.announcement(monthLabel: '${draw['month_label']}', message: '${draw['announcement']}', winners: winners.map((winner) => {...winner}).toList());
