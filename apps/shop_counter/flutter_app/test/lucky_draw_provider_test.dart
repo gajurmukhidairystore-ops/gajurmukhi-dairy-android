@@ -60,7 +60,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Test Monthly Draw · PUBLISHED'), findsOneWidget);
     expect(find.textContaining('Draw date:'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Public winner: GJ-VIEW · A*** R**'), 300, scrollable: find.byType(Scrollable).first);
+    expect(find.textContaining('1st Prize'), findsOneWidget);
+    expect(find.textContaining('Mixer'), findsOneWidget);
+    expect(find.textContaining('/private/id-a.jpg'), findsNothing);
+    expect(find.text('Asha Rai'), findsNothing);
+    expect(find.textContaining('Admin: configure monthly draw'), findsNothing);
+    expect(find.textContaining('Store: issue eligible customer token'), findsNothing);
+    await tester.scrollUntilVisible(find.byKey(const Key('lucky-draw-token-lookup')), 300, scrollable: find.byType(Scrollable).first);
+    await tester.enterText(find.byKey(const Key('lucky-draw-token-lookup')), 'GJ-VIEW');
+    await tester.tap(find.text('Check token status'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Token GJ-VIEW'), findsOneWidget);
     expect(find.text('Public winner: GJ-VIEW · A*** R**'), findsOneWidget);
   });
 }
