@@ -4,6 +4,7 @@ import 'package:gajurmukhi_dairy_business_pro/services/sync_coordinator.dart';
 import 'package:gajurmukhi_dairy_business_pro/services/whatsapp_service.dart';
 import 'package:gajurmukhi_dairy_business_pro/services/role_permissions.dart';
 import 'package:gajurmukhi_dairy_business_pro/services/location_service.dart';
+import 'package:gajurmukhi_dairy_business_pro/services/lucky_draw_service.dart';
 
 void main() {
   test('invoice totals and due are never negative', () {
@@ -143,6 +144,39 @@ void main() {
     );
     expect(message, contains('*GAJURMUKHI DAIRY & STORE*'));
     expect(message, isNot(contains('{{unknown}}')));
+  });
+
+  test('lucky draw requires NPR 1,000 and creates one free token per eligible bill', () {
+    expect(LuckyDrawService.isEligiblePurchase(999.99), isFalse);
+    expect(LuckyDrawService.isEligiblePurchase(1000), isTrue);
+    expect(LuckyDrawService.tokensForPurchase(1500), 1);
+  });
+
+  test('public lucky draw name is masked and identity details are not included', () {
+    expect(LuckyDrawService.maskName('Sita Sharma'), 'S*** S*****');
+    final label = LuckyDrawService.publicWinnerLabel(tokenNumber: 'GJ-123', customerName: 'Sita Sharma');
+    expect(label, 'GJ-123 · S*** S*****');
+    expect(label, isNot(contains('identity')));
+  });
+
+  test('lucky draw selects distinct customer winners and formats announcement', () {
+    final tokens = [
+      {'token_number': 'GJ-1', 'customer_id': 'c1', 'customer_name': 'Asha Rai', 'status': 'ELIGIBLE'},
+      {'token_number': 'GJ-2', 'customer_id': 'c2', 'customer_name': 'Bikash Thapa', 'status': 'ELIGIBLE'},
+      {'token_number': 'GJ-3', 'customer_id': 'c3', 'customer_name': 'Chandra Gurung', 'status': 'ELIGIBLE'},
+    ];
+    final prizes = [
+      {'prize_rank': 1, 'prize_title': '1st Prize', 'prize_description': 'Mixer'},
+      {'prize_rank': 2, 'prize_title': '2nd Prize', 'prize_description': 'Basket'},
+      {'prize_rank': 3, 'prize_title': '3rd Prize', 'prize_description': 'Voucher'},
+    ];
+    final winners = LuckyDrawService.selectWinners(eligibleTokens: tokens, prizes: prizes, seed: 7);
+    expect(winners, hasLength(3));
+    expect(winners.map((winner) => winner['customer_id']).toSet(), hasLength(3));
+    final message = LuckyDrawService.announcement(monthLabel: 'August 2026', message: 'Thank you', winners: winners);
+    expect(message, contains('GJ-'));
+    expect(message, contains('***'));
+    expect(message, isNot(contains('identity_reference')));
   });
 
   test('WhatsApp invoice URI strips formatting and encodes the message', () {

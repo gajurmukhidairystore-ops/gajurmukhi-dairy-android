@@ -7,7 +7,7 @@ class AppDatabase {
 
   Future<void> init() async {
     final p = join(await getDatabasesPath(), 'gajurmukhi_pro.db');
-    db = await openDatabase(p, version: 5, onCreate: _create, onUpgrade: _upgrade);
+    db = await openDatabase(p, version: 7, onCreate: _create, onUpgrade: _upgrade);
   }
 
   Future<void> _create(Database db, int version) async {
@@ -99,6 +99,42 @@ class AppDatabase {
       )
     ''');
     await db.execute('''
+      CREATE TABLE lucky_draws(
+        id TEXT PRIMARY KEY, month_key TEXT NOT NULL, month_label TEXT NOT NULL,
+        minimum_purchase REAL NOT NULL DEFAULT 1000, announcement TEXT NOT NULL,
+        draw_date TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'OPEN',
+        created_by TEXT, created_at TEXT NOT NULL, published_at TEXT
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE lucky_draw_prizes(
+        id TEXT PRIMARY KEY, draw_id TEXT NOT NULL, prize_rank INTEGER NOT NULL,
+        prize_title TEXT NOT NULL, prize_description TEXT NOT NULL, active INTEGER DEFAULT 1
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE lucky_draw_tokens(
+        id TEXT PRIMARY KEY, draw_id TEXT NOT NULL, token_number TEXT NOT NULL,
+        invoice_id TEXT, customer_id TEXT, customer_name TEXT NOT NULL,
+        identity_reference TEXT, identity_type TEXT, consented INTEGER NOT NULL DEFAULT 0,
+        issued_by TEXT, status TEXT NOT NULL DEFAULT 'ELIGIBLE', created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE lucky_draw_winners(
+        id TEXT PRIMARY KEY, draw_id TEXT NOT NULL, prize_id TEXT NOT NULL,
+        token_id TEXT NOT NULL, token_number TEXT NOT NULL, masked_name TEXT NOT NULL,
+        selected_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE lucky_draw_identity_records(
+        id TEXT PRIMARY KEY, token_id TEXT NOT NULL, identity_type TEXT NOT NULL,
+        private_reference TEXT NOT NULL, consented INTEGER NOT NULL DEFAULT 0,
+        retention_until TEXT, created_at TEXT NOT NULL, deleted_at TEXT
+      )
+    ''');
+    await db.execute('''
       CREATE TABLE users(
         id TEXT PRIMARY KEY, name TEXT NOT NULL, username TEXT UNIQUE NOT NULL,
         role TEXT NOT NULL, pin_hash TEXT, active INTEGER DEFAULT 1
@@ -132,10 +168,19 @@ class AppDatabase {
     if (oldV < 5) {
       await db.execute('''CREATE TABLE credit_reminders(id TEXT PRIMARY KEY, customer_id TEXT NOT NULL, amount REAL NOT NULL, channel TEXT NOT NULL, message TEXT, status TEXT DEFAULT 'PENDING', created_at TEXT NOT NULL, sent_at TEXT)''');
     }
+    if (oldV < 6) {
+      await db.execute('''CREATE TABLE lucky_draws(id TEXT PRIMARY KEY, month_key TEXT NOT NULL, month_label TEXT NOT NULL, minimum_purchase REAL NOT NULL DEFAULT 1000, announcement TEXT NOT NULL, draw_date TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'OPEN', created_by TEXT, created_at TEXT NOT NULL, published_at TEXT)''');
+      await db.execute('''CREATE TABLE lucky_draw_prizes(id TEXT PRIMARY KEY, draw_id TEXT NOT NULL, prize_rank INTEGER NOT NULL, prize_title TEXT NOT NULL, prize_description TEXT NOT NULL, active INTEGER DEFAULT 1)''');
+      await db.execute('''CREATE TABLE lucky_draw_tokens(id TEXT PRIMARY KEY, draw_id TEXT NOT NULL, token_number TEXT NOT NULL, invoice_id TEXT, customer_id TEXT, customer_name TEXT NOT NULL, identity_reference TEXT, identity_type TEXT, consented INTEGER NOT NULL DEFAULT 0, issued_by TEXT, status TEXT NOT NULL DEFAULT 'ELIGIBLE', created_at TEXT NOT NULL)''');
+      await db.execute('''CREATE TABLE lucky_draw_winners(id TEXT PRIMARY KEY, draw_id TEXT NOT NULL, prize_id TEXT NOT NULL, token_id TEXT NOT NULL, token_number TEXT NOT NULL, masked_name TEXT NOT NULL, selected_at TEXT NOT NULL)''');
+    }
+    if (oldV < 7) {
+      await db.execute('''CREATE TABLE lucky_draw_identity_records(id TEXT PRIMARY KEY, token_id TEXT NOT NULL, identity_type TEXT NOT NULL, private_reference TEXT NOT NULL, consented INTEGER NOT NULL DEFAULT 0, retention_until TEXT, created_at TEXT NOT NULL, deleted_at TEXT)''');
+    }
   }
 
-  Future<List<Map<String,Object?>>> query(String table, {String? where, List<Object?>? args}) =>
-      db.query(table, where: where, whereArgs: args);
+  Future<List<Map<String,Object?>>> query(String table, {String? where, List<Object?>? args, String? orderBy}) =>
+      db.query(table, where: where, whereArgs: args, orderBy: orderBy);
 
   Future<int> insert(String table, Map<String,Object?> row) => db.insert(table, row);
   Future<int> update(String table, Map<String,Object?> row, String id) =>

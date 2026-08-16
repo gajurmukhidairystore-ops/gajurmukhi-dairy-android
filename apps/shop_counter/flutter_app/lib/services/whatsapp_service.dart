@@ -23,6 +23,7 @@ _Daily dairy transaction summary_
 *Payment mode:* {{paymentMode}}
 {{upiLine}}
 {{qrStatusLine}}
+{{luckyTokenLine}}
 
 {{paymentNote}}
 Value for Life''';
@@ -45,6 +46,8 @@ Value for Life''';
     '{{upiLine}}',
     '{{qrStatus}}',
     '{{qrStatusLine}}',
+    '{{luckyToken}}',
+    '{{luckyTokenLine}}',
     '{{paymentNote}}',
   ];
 
@@ -82,6 +85,7 @@ Value for Life''';
     String? paymentMethod,
     String? upiId,
     String qrStatus = 'not_applicable',
+    String? luckyToken,
     String? template,
   }) {
     String money(double value) => 'NPR ${value.toStringAsFixed(2)}';
@@ -126,6 +130,8 @@ Value for Life''';
       'upiLine': upiId?.trim().isNotEmpty == true ? '*UPI:* ${upiId!.trim()}' : '',
       'qrStatus': qrLabel,
       'qrStatusLine': qrStatus != 'not_applicable' ? '*QR payment:* $qrLabel' : '',
+      'luckyToken': luckyToken?.trim() ?? '',
+      'luckyTokenLine': luckyToken?.trim().isNotEmpty == true ? '*Lucky draw token:* ${luckyToken!.trim()}' : '',
       'paymentNote': balance > 0 ? 'Please settle the balance at your convenience.' : 'Payment received in full. Thank you!',
     });
   }

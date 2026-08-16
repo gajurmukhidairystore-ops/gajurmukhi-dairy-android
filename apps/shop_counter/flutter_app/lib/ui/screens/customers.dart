@@ -41,7 +41,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
     final amount = (customer['balance'] as num?)?.toDouble() ?? 0;
     if (amount <= 0) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('This customer has no outstanding balance'))); return; }
     final name = '${customer['name'] ?? 'Customer'}';
-    final message = 'Hello $name, this is a friendly reminder that your outstanding balance is NPR ${amount.toStringAsFixed(2)}. Thank you — Gajurmukhi Store.';
+    final message = 'Hello $name, this is a friendly reminder that your outstanding balance is NPR ${amount.toStringAsFixed(2)}. Thank you — Gajurmukhi Dairy & Store.';
     try {
       await widget.p.createCreditReminder(customerId: '${customer['id']}', amount: amount, channel: 'WHATSAPP', message: message);
       final phone = '${customer['phone'] ?? ''}'.trim();

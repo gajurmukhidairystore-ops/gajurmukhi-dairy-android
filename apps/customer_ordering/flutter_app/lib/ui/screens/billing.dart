@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:file_picker/file_picker.dart';
 
 import '../../providers/business_provider.dart';
 import '../../services/printing_service.dart';
@@ -23,6 +24,7 @@ class _BillingScreenState extends State<BillingScreen> {
   double discount = 0;
   double paid = 0;
   String? selectedCustomerId;
+  String? lastLuckyToken;
 
   @override
   void initState() {
@@ -55,7 +57,7 @@ class _BillingScreenState extends State<BillingScreen> {
 
   String get qrStatus => payment == 'QR' ? (paid >= total && total > 0 ? 'received' : 'pending') : 'not_applicable';
 
-  String get paymentQrData => 'upi://pay?pa=${Uri.encodeComponent(upiId.text.trim())}&pn=${Uri.encodeComponent('Gajurmukhi Customer')}&am=${total.toStringAsFixed(2)}&cu=INR&tn=${Uri.encodeComponent('Gajurmukhi bill')}';
+  String get paymentQrData => 'upi://pay?pa=${Uri.encodeComponent(upiId.text.trim())}&pn=${Uri.encodeComponent('Gajurmukhi Dairy & Store')}&am=${total.toStringAsFixed(2)}&cu=INR&tn=${Uri.encodeComponent('Gajurmukhi bill')}';
 
   Map<String, Object?>? customerById(String? id) {
     for (final customer in widget.p.customers) {
@@ -92,18 +94,45 @@ class _BillingScreenState extends State<BillingScreen> {
     setState(() {});
   }
 
+  Future<Map<String, Object?>?> _collectLuckyDrawDetails() async {
+    final name = TextEditingController(text: '${customerById(selectedCustomerId)?['name'] ?? ''}');
+    final identityType = TextEditingController(text: 'Identity document');
+    final token = TextEditingController();
+    String? identityReference;
+    bool consented = false;
+    final result = await showDialog<Map<String, Object?>>(context: context, builder: (dialogContext) => StatefulBuilder(builder: (context, setDialogState) => AlertDialog(
+      title: const Text('Eligible lucky-draw purchase'),
+      content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        const Text('This bill qualifies for one free token. Store identity information only with customer consent.'),
+        const SizedBox(height: 12), TextField(controller: name, decoration: const InputDecoration(labelText: 'Customer full name')),
+        const SizedBox(height: 10), TextField(controller: token, decoration: const InputDecoration(labelText: 'Token number (optional)')),
+        const SizedBox(height: 10), TextField(controller: identityType, decoration: const InputDecoration(labelText: 'Identity type')),
+        const SizedBox(height: 8), OutlinedButton.icon(onPressed: () async { final picked = await FilePicker.platform.pickFiles(withData: false); if (picked?.files.single.path != null) setDialogState(() => identityReference = picked!.files.single.path); }, icon: const Icon(Icons.upload_file), label: Text(identityReference == null ? 'Attach identity photo/document' : 'Document attached')),
+        CheckboxListTile(value: consented, onChanged: (value) => setDialogState(() => consented = value ?? false), title: const Text('Customer consented'), contentPadding: EdgeInsets.zero),
+      ])),
+      actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Skip token')), FilledButton(onPressed: () => Navigator.pop(dialogContext, {'name': name.text, 'token': token.text, 'identityType': identityType.text, 'identityReference': identityReference, 'consented': consented}), child: const Text('Register token'))],
+    )));
+    name.dispose(); identityType.dispose(); token.dispose();
+    return result;
+  }
+
   Future<void> save() async {
     if (cart.isEmpty) return;
-    await widget.p.createInvoice(
-      customerId: selectedCustomerId,
-      items: cart,
-      discount: discount,
-      paid: paid,
-      paymentMethod: payment,
-      qrStatus: qrStatus,
-    );
+    final savedTotal = total;
+    lastLuckyToken = null;
+    await widget.p.createInvoice(customerId: selectedCustomerId, items: cart, discount: discount, paid: paid, paymentMethod: payment, qrStatus: qrStatus);
+    final openDraws = widget.p.luckyDraws.where((row) => '${row['status']}' == 'OPEN').toList();
+    final draw = openDraws.isEmpty ? null : openDraws.first;
+    if (savedTotal >= 1000 && draw != null && mounted) {
+      final details = await _collectLuckyDrawDetails();
+      if (details != null) {
+        try {
+          lastLuckyToken = await widget.p.issueLuckyToken(drawId: '${draw['id']}', purchaseTotal: savedTotal, customerName: '${details['name']}', customerId: selectedCustomerId, identityReference: '${details['identityReference'] ?? ''}', identityType: '${details['identityType']}', consented: details['consented'] == true, issuedBy: 'shop', tokenNumber: '${details['token']}');
+        } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Invalid argument(s): ', '')))); }
+      }
+    }
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invoice saved')));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(lastLuckyToken == null ? 'Invoice saved' : 'Invoice saved with lucky token $lastLuckyToken')));
     setState(() => cart.clear());
   }
 
@@ -128,6 +157,7 @@ class _BillingScreenState extends State<BillingScreen> {
       paymentMethod: payment,
       upiId: upiId.text.trim().isEmpty ? null : upiId.text.trim(),
       qrStatus: qrStatus,
+      luckyToken: lastLuckyToken,
       template: whatsappTemplate.text,
     );
     await WhatsAppService().openMessage(customerPhone.text.trim(), message);
@@ -192,6 +222,7 @@ class _BillingScreenState extends State<BillingScreen> {
                   Text('Total: NPR ${total.toStringAsFixed(2)}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   Text('Paid: NPR ${paid.toStringAsFixed(2)}'),
                   Text('Due: NPR ${due.toStringAsFixed(2)}'),
+                  if (lastLuckyToken != null) Text('Lucky draw token: $lastLuckyToken', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple)),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
                     initialValue: payment,

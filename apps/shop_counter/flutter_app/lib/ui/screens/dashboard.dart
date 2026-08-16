@@ -128,7 +128,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const SizedBox(width: 12),
                       const Expanded(
                         child: Text(
-                          'Gajurmukhi Store',
+                          'Gajurmukhi Dairy',
                           style: TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w700),
                         ),
                       ),

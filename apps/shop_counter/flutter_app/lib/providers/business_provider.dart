@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../data/database.dart';
+import '../services/lucky_draw_service.dart';
 
 class BusinessProvider extends ChangeNotifier {
   final AppDatabase db;
@@ -12,6 +13,10 @@ class BusinessProvider extends ChangeNotifier {
   List<Map<String,Object?>> farmers = [];
   List<Map<String,Object?>> milk = [];
   Map<String,num> totals = {};
+  List<Map<String,Object?>> luckyDraws = [];
+  List<Map<String,Object?>> luckyDrawPrizes = [];
+  List<Map<String,Object?>> luckyDrawTokens = [];
+  List<Map<String,Object?>> luckyDrawWinners = [];
 
   BusinessProvider(this.db);
 
@@ -30,6 +35,10 @@ class BusinessProvider extends ChangeNotifier {
     farmers = await db.query('farmers', where: 'active=1');
     milk = await db.query('milk_collections', where: 'collection_date=date("now","localtime")');
     totals = await db.totals();
+    luckyDraws = await db.query('lucky_draws', orderBy: 'created_at DESC');
+    luckyDrawPrizes = await db.query('lucky_draw_prizes', orderBy: 'prize_rank ASC');
+    luckyDrawTokens = await db.query('lucky_draw_tokens', orderBy: 'created_at DESC');
+    luckyDrawWinners = await db.query('lucky_draw_winners', orderBy: 'selected_at DESC');
     notifyListeners();
   }
 
@@ -218,6 +227,120 @@ class BusinessProvider extends ChangeNotifier {
     });
     await db.enqueueSync(entity: 'invoices', entityId: id, operation: 'upsert', payload: {'id': id, 'invoice_no': no, 'customer_id': customerId, 'subtotal': subtotal, 'discount': discount, 'total': total, 'paid': paid, 'due': due, 'payment_method': paymentMethod, 'status': due <= 0 ? 'PAID' : 'CREDIT', 'qr_status': qrStatus, 'items': items});
     await refresh();
+  }
+
+  Future<String> createLuckyDraw({
+    required String monthKey,
+    required String monthLabel,
+    required String announcement,
+    required DateTime drawDate,
+    required List<Map<String, String>> prizes,
+    String? createdBy,
+  }) async {
+    if (monthKey.trim().isEmpty || monthLabel.trim().isEmpty) throw ArgumentError('Month is required');
+    if (prizes.length != 3) throw ArgumentError('Configure exactly three prizes');
+    final existing = await db.query('lucky_draws', where: 'month_key=?', args: [monthKey.trim()]);
+    if (existing.isNotEmpty) throw StateError('A lucky draw already exists for this month');
+    final drawId = uuid.v4();
+    final now = DateTime.now().toIso8601String();
+    final draw = {
+      'id': drawId, 'month_key': monthKey.trim(), 'month_label': monthLabel.trim(),
+      'minimum_purchase': LuckyDrawService.minimumPurchase, 'announcement': announcement.trim(),
+      'draw_date': drawDate.toIso8601String(), 'status': 'OPEN', 'created_by': createdBy, 'created_at': now,
+    };
+    await db.insert('lucky_draws', draw);
+    await db.enqueueSync(entity: 'lucky_draws', entityId: drawId, operation: 'upsert', payload: draw);
+    for (var i = 0; i < prizes.length; i++) {
+      final prizeId = uuid.v4();
+      final row = {'id': prizeId, 'draw_id': drawId, 'prize_rank': i + 1, 'prize_title': prizes[i]['title']!.trim(), 'prize_description': prizes[i]['description']!.trim(), 'active': 1};
+      await db.insert('lucky_draw_prizes', row);
+      await db.enqueueSync(entity: 'lucky_draw_prizes', entityId: prizeId, operation: 'upsert', payload: row);
+    }
+    await refresh();
+    return drawId;
+  }
+
+  Future<String> issueLuckyToken({
+    required String drawId,
+    required double purchaseTotal,
+    required String customerName,
+    String? customerId,
+    String? invoiceId,
+    required String identityReference,
+    required String identityType,
+    required bool consented,
+    required String issuedBy,
+    String? tokenNumber,
+  }) async {
+    if (!LuckyDrawService.isEligiblePurchase(purchaseTotal)) throw ArgumentError('A purchase of NPR 1,000 or more is required');
+    if (customerName.trim().isEmpty) throw ArgumentError('Customer name is required');
+    if (identityReference.trim().isEmpty) throw ArgumentError('Identity photo or document reference is required');
+    if (!consented) throw ArgumentError('Customer consent is required before storing identity information');
+    final drawRows = await db.query('lucky_draws', where: 'id=? AND status=?', args: [drawId, 'OPEN']);
+    if (drawRows.isEmpty) throw StateError('This lucky draw is not open');
+    final id = uuid.v4();
+    final token = tokenNumber?.trim().isNotEmpty == true ? tokenNumber!.trim() : 'GJ-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+    final duplicate = await db.query('lucky_draw_tokens', where: 'draw_id=? AND token_number=?', args: [drawId, token]);
+    if (duplicate.isNotEmpty) throw StateError('Token number already exists for this draw');
+    final now = DateTime.now();
+    final row = {
+      'id': id, 'draw_id': drawId, 'token_number': token, 'invoice_id': invoiceId, 'customer_id': customerId,
+      'customer_name': customerName.trim(), 'identity_reference': null, 'identity_type': identityType.trim(),
+      'consented': 1, 'issued_by': issuedBy, 'status': 'ELIGIBLE', 'created_at': now.toIso8601String(),
+    };
+    await db.insert('lucky_draw_tokens', row);
+    final identityId = uuid.v4();
+    final identityRow = {'id': identityId, 'token_id': id, 'identity_type': identityType.trim(), 'private_reference': identityReference.trim(), 'consented': 1, 'retention_until': now.add(const Duration(days: 365)).toIso8601String(), 'created_at': now.toIso8601String(), 'deleted_at': null};
+    await db.insert('lucky_draw_identity_records', identityRow);
+    await db.enqueueSync(entity: 'lucky_draw_tokens', entityId: id, operation: 'upsert', payload: row);
+    await db.enqueueSync(entity: 'lucky_draw_identity_records', entityId: identityId, operation: 'upsert', payload: {...identityRow, 'private_reference': '[restricted]'});
+    await refresh();
+    return token;
+  }
+
+  Future<List<Map<String, Object?>>> privateLuckyDrawIdentityRecords(String role) async {
+    if (role != 'admin' && role != 'shop') throw StateError('Only Admin or Store staff can access identity records');
+    return db.query('lucky_draw_identity_records', where: 'deleted_at IS NULL', orderBy: 'created_at DESC');
+  }
+
+  Future<void> deleteLuckyDrawIdentityRecord(String role, String id) async {
+    if (role != 'admin') throw StateError('Only Admin can delete identity records');
+    await db.update('lucky_draw_identity_records', {'deleted_at': DateTime.now().toIso8601String(), 'private_reference': '[deleted]'}, id);
+    await db.enqueueSync(entity: 'lucky_draw_identity_records', entityId: id, operation: 'delete', payload: {'id': id});
+    await refresh();
+  }
+
+  Future<String> runLuckyDraw({required String drawId, int seed = 20260816}) async {
+    final draws = await db.query('lucky_draws', where: 'id=?', args: [drawId]);
+    if (draws.isEmpty) throw StateError('Lucky draw not found');
+    if ('${draws.first['status']}' != 'OPEN') throw StateError('This draw has already been completed');
+    final drawDate = DateTime.tryParse('${draws.first['draw_date']}');
+    if (drawDate != null && DateTime.now().isBefore(drawDate)) throw StateError('The monthly draw can be generated on or after ${draws.first['draw_date']}');
+    final prizes = await db.query('lucky_draw_prizes', where: 'draw_id=? AND active=1', args: [drawId]);
+    final tokens = await db.query('lucky_draw_tokens', where: 'draw_id=? AND status=?', args: [drawId, 'ELIGIBLE']);
+    final winners = LuckyDrawService.selectWinners(eligibleTokens: tokens, prizes: prizes, seed: seed);
+    if (winners.length < prizes.length) throw StateError('At least three eligible tokens are required for three prizes');
+    final now = DateTime.now().toIso8601String();
+    final winnerRows = <Map<String, Object?>>[];
+    await db.db.transaction((txn) async {
+      for (final winner in winners) {
+        final prize = prizes.firstWhere((p) => '${p['prize_rank']}' == '${winner['prize_rank']}');
+        final token = tokens.firstWhere((t) => '${t['token_number']}' == '${winner['token_number']}');
+        final winnerId = uuid.v4();
+        final row = {'id': winnerId, 'draw_id': drawId, 'prize_id': prize['id'], 'token_id': token['id'], 'token_number': token['token_number'], 'masked_name': winner['masked_name'], 'selected_at': now};
+        await txn.insert('lucky_draw_winners', row);
+        winnerRows.add(row);
+        await txn.update('lucky_draw_tokens', {'status': 'WON'}, where: 'id=?', whereArgs: [token['id']]);
+      }
+      for (final token in tokens) {
+        if (!winners.any((winner) => '${winner['token_number']}' == '${token['token_number']}')) await txn.update('lucky_draw_tokens', {'status': 'NOT_SELECTED'}, where: 'id=?', whereArgs: [token['id']]);
+      }
+      await txn.update('lucky_draws', {'status': 'PUBLISHED', 'published_at': now}, where: 'id=?', whereArgs: [drawId]);
+    });
+    for (final row in winnerRows) await db.enqueueSync(entity: 'lucky_draw_winners', entityId: '${row['id']}', operation: 'upsert', payload: row);
+    await refresh();
+    final draw = draws.first;
+    return LuckyDrawService.announcement(monthLabel: '${draw['month_label']}', message: '${draw['announcement']}', winners: winners.map((winner) => {...winner}).toList());
   }
 
   String exportSnapshot() => jsonEncode({
