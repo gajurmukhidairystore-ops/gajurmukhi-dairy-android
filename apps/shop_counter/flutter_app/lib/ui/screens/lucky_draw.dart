@@ -2,7 +2,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/business_provider.dart';
-import '../../services/lucky_draw_service.dart';
 
 class LuckyDrawScreen extends StatefulWidget {
   final String role;
@@ -30,7 +29,9 @@ class _LuckyDrawScreenState extends State<LuckyDrawScreen> {
   @override
   void dispose() {
     monthKey.dispose(); monthLabel.dispose(); announcement.dispose(); customerName.dispose(); purchaseTotal.dispose(); identityType.dispose(); tokenNumber.dispose();
-    for (final controller in [...prizeTitles, ...prizeDescriptions]) controller.dispose();
+    for (final controller in [...prizeTitles, ...prizeDescriptions]) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -108,7 +109,7 @@ class _LuckyDrawScreenState extends State<LuckyDrawScreen> {
         ],
         if ((widget.role == 'admin' || widget.role == 'shop') && draw != null && '${draw['status']}' == 'OPEN') ...[
           _sectionTitle('Store: issue eligible customer token'),
-          DropdownButtonFormField<String>(value: selectedCustomerId, decoration: const InputDecoration(labelText: 'Existing customer (optional)'), items: [const DropdownMenuItem(value: null, child: Text('Enter customer name below')), ...p.customers.map((customer) => DropdownMenuItem(value: '${customer['id']}', child: Text('${customer['name']}')))], onChanged: (value) => setState(() { selectedCustomerId = value; if (value != null) { final customer = p.customers.firstWhere((row) => '${row['id']}' == value); customerName.text = '${customer['name']}'; } })),
+          DropdownButtonFormField<String>(initialValue: selectedCustomerId, decoration: const InputDecoration(labelText: 'Existing customer (optional)'), items: [const DropdownMenuItem(value: null, child: Text('Enter customer name below')), ...p.customers.map((customer) => DropdownMenuItem(value: '${customer['id']}', child: Text('${customer['name']}')))], onChanged: (value) => setState(() { selectedCustomerId = value; if (value != null) { final customer = p.customers.firstWhere((row) => '${row['id']}' == value); customerName.text = '${customer['name']}'; } })),
           const SizedBox(height: 10), TextField(controller: customerName, decoration: const InputDecoration(labelText: 'Customer full name')),
           const SizedBox(height: 10), TextField(controller: purchaseTotal, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Eligible bill total (NPR)')),
           const SizedBox(height: 10), TextField(controller: tokenNumber, decoration: const InputDecoration(labelText: 'Token number (leave blank to generate)')),

@@ -333,7 +333,9 @@ class BusinessProvider extends ChangeNotifier {
         await txn.update('lucky_draw_tokens', {'status': 'WON'}, where: 'id=?', whereArgs: [token['id']]);
       }
       for (final token in tokens) {
-        if (!winners.any((winner) => '${winner['token_number']}' == '${token['token_number']}')) await txn.update('lucky_draw_tokens', {'status': 'NOT_SELECTED'}, where: 'id=?', whereArgs: [token['id']]);
+        if (!winners.any((winner) => '${winner['token_number']}' == '${token['token_number']}')) {
+          await txn.update('lucky_draw_tokens', {'status': 'NOT_SELECTED'}, where: 'id=?', whereArgs: [token['id']]);
+        }
       }
       await txn.update('lucky_draws', {'status': 'PUBLISHED', 'published_at': now}, where: 'id=?', whereArgs: [drawId]);
     });
