@@ -5,8 +5,8 @@ import 'package:sqflite/sqflite.dart';
 class AppDatabase {
   late Database db;
 
-  Future<void> init() async {
-    final p = join(await getDatabasesPath(), 'gajurmukhi_pro.db');
+  Future<void> init({String? path}) async {
+    final p = path ?? join(await getDatabasesPath(), 'gajurmukhi_pro.db');
     db = await openDatabase(p, version: 7, onCreate: _create, onUpgrade: _upgrade);
   }
 
