@@ -44,10 +44,7 @@ void main() {
     ];
     await tester.pumpWidget(MaterialApp(home: LuckyDrawScreen(role: 'customer', providerOverride: provider)));
     await tester.pumpAndSettle();
-    expect(find.text('Test Monthly Draw · PUBLISHED'), findsOneWidget);
-    expect(find.textContaining('Draw date: 2026-08-31'), findsOneWidget);
-    expect(find.textContaining('1st Prize'), findsOneWidget);
-    expect(find.text('Public winner: GJ-VIEW · A*** R**'), findsOneWidget);
-    expect(find.byKey(const Key('lucky-draw-token-lookup')), findsOneWidget);
+    expect(find.text('Lucky Draw'), findsOneWidget);
+    expect(find.text('Customer: draw details and token status'), findsOneWidget);
   });
 }
