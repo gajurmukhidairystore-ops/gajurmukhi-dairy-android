@@ -33,7 +33,7 @@ class BusinessProvider extends ChangeNotifier {
     customers = await db.query('customers', where: 'active=1');
     products = await db.query('products', where: 'active=1');
     farmers = await db.query('farmers', where: 'active=1');
-    milk = await db.query('milk_collections', where: 'collection_date=date("now","localtime")');
+    milk = await db.query('milk_collections', where: "collection_date=date('now','localtime')");
     totals = await db.totals();
     luckyDraws = await db.query('lucky_draws', orderBy: 'created_at DESC');
     luckyDrawPrizes = await db.query('lucky_draw_prizes', orderBy: 'prize_rank ASC');

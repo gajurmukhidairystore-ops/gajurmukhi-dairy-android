@@ -197,10 +197,10 @@ class AppDatabase {
   Future<void> markSynced(String id) async => db.update('sync_queue', {'synced': 1}, where: 'id=?', whereArgs: [id]);
 
   Future<Map<String,num>> totals() async {
-    final sales = await db.rawQuery('SELECT COALESCE(SUM(total),0) v FROM invoices WHERE date(created_at)=date("now","localtime")');
-    final paid = await db.rawQuery('SELECT COALESCE(SUM(paid),0) v FROM invoices WHERE date(created_at)=date("now","localtime")');
-    final expenses = await db.rawQuery('SELECT COALESCE(SUM(amount),0) v FROM expenses WHERE date(created_at)=date("now","localtime")');
-    final milk = await db.rawQuery('SELECT COALESCE(SUM(litres),0) v FROM milk_collections WHERE collection_date=date("now","localtime")');
+    final sales = await db.rawQuery("SELECT COALESCE(SUM(total),0) v FROM invoices WHERE date(created_at)=date('now','localtime')");
+    final paid = await db.rawQuery("SELECT COALESCE(SUM(paid),0) v FROM invoices WHERE date(created_at)=date('now','localtime')");
+    final expenses = await db.rawQuery("SELECT COALESCE(SUM(amount),0) v FROM expenses WHERE date(created_at)=date('now','localtime')");
+    final milk = await db.rawQuery("SELECT COALESCE(SUM(litres),0) v FROM milk_collections WHERE collection_date=date('now','localtime')");
     final due = await db.rawQuery('SELECT COALESCE(SUM(balance),0) v FROM customers');
     return {
       'sales': sales.first['v'] as num,
