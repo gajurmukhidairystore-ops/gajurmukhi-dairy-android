@@ -60,7 +60,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Test Monthly Draw · PUBLISHED'), findsOneWidget);
     expect(find.textContaining('Draw date:'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Public winner: GJ-VIEW · A*** R**'), 300, scrollable: find.byType(ListView));
+    await tester.scrollUntilVisible(find.text('Public winner: GJ-VIEW · A*** R**'), 300, scrollable: find.byType(Scrollable).first);
     expect(find.text('Public winner: GJ-VIEW · A*** R**'), findsOneWidget);
   });
 }
