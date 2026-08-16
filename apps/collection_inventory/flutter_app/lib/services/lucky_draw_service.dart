@@ -5,6 +5,12 @@ class LuckyDrawService {
 
   static bool isEligiblePurchase(double total) => total >= minimumPurchase;
 
+  static bool isDuplicateToken(Iterable<String> existingTokenNumbers, String candidate) => existingTokenNumbers.map((value) => value.trim()).contains(candidate.trim());
+
+  static bool canAccessIdentityRecords(String role) => role == 'admin' || role == 'shop';
+
+  static bool canDeleteIdentityRecord(String role) => role == 'admin';
+
   static int tokensForPurchase(double total) => isEligiblePurchase(total) ? 1 : 0;
 
   static String maskName(String name) {

@@ -152,6 +152,16 @@ void main() {
     expect(LuckyDrawService.tokensForPurchase(1500), 1);
   });
 
+  test('duplicate token and identity access rules are role restricted', () {
+    expect(LuckyDrawService.isDuplicateToken(['GJ-1', 'GJ-2'], ' GJ-2 '), isTrue);
+    expect(LuckyDrawService.isDuplicateToken(['GJ-1'], 'GJ-9'), isFalse);
+    expect(LuckyDrawService.canAccessIdentityRecords('admin'), isTrue);
+    expect(LuckyDrawService.canAccessIdentityRecords('shop'), isTrue);
+    expect(LuckyDrawService.canAccessIdentityRecords('customer'), isFalse);
+    expect(LuckyDrawService.canDeleteIdentityRecord('admin'), isTrue);
+    expect(LuckyDrawService.canDeleteIdentityRecord('shop'), isFalse);
+  });
+
   test('public lucky draw name is masked and identity details are not included', () {
     expect(LuckyDrawService.maskName('Sita Sharma'), 'S*** S*****');
     final label = LuckyDrawService.publicWinnerLabel(tokenNumber: 'GJ-123', customerName: 'Sita Sharma');
@@ -177,6 +187,9 @@ void main() {
     expect(message, contains('GJ-'));
     expect(message, contains('***'));
     expect(message, isNot(contains('identity_reference')));
+    expect(message, contains('1st Prize'));
+    expect(message, contains('2nd Prize'));
+    expect(message, contains('3rd Prize'));
   });
 
   test('WhatsApp invoice URI strips formatting and encodes the message', () {

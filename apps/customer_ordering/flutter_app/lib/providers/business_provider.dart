@@ -281,7 +281,7 @@ class BusinessProvider extends ChangeNotifier {
     final id = uuid.v4();
     final token = tokenNumber?.trim().isNotEmpty == true ? tokenNumber!.trim() : 'GJ-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
     final duplicate = await db.query('lucky_draw_tokens', where: 'draw_id=? AND token_number=?', args: [drawId, token]);
-    if (duplicate.isNotEmpty) throw StateError('Token number already exists for this draw');
+    if (LuckyDrawService.isDuplicateToken(duplicate.map((row) => '${row['token_number']}'), token)) throw StateError('Token number already exists for this draw');
     final now = DateTime.now();
     final row = {
       'id': id, 'draw_id': drawId, 'token_number': token, 'invoice_id': invoiceId, 'customer_id': customerId,
@@ -299,12 +299,12 @@ class BusinessProvider extends ChangeNotifier {
   }
 
   Future<List<Map<String, Object?>>> privateLuckyDrawIdentityRecords(String role) async {
-    if (role != 'admin' && role != 'shop') throw StateError('Only Admin or Store staff can access identity records');
+    if (!LuckyDrawService.canAccessIdentityRecords(role)) throw StateError('Only Admin or Store staff can access identity records');
     return db.query('lucky_draw_identity_records', where: 'deleted_at IS NULL', orderBy: 'created_at DESC');
   }
 
   Future<void> deleteLuckyDrawIdentityRecord(String role, String id) async {
-    if (role != 'admin') throw StateError('Only Admin can delete identity records');
+    if (!LuckyDrawService.canDeleteIdentityRecord(role)) throw StateError('Only Admin can delete identity records');
     await db.update('lucky_draw_identity_records', {'deleted_at': DateTime.now().toIso8601String(), 'private_reference': '[deleted]'}, id);
     await db.enqueueSync(entity: 'lucky_draw_identity_records', entityId: id, operation: 'delete', payload: {'id': id});
     await refresh();

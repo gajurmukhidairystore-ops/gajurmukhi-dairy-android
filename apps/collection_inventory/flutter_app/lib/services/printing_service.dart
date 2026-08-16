@@ -12,6 +12,7 @@ class PrintingService {
     required double paid,
     required double due,
     String qrStatus = 'not_applicable',
+    String? luckyToken,
   }) async {
     final doc = pw.Document();
     doc.addPage(
@@ -40,6 +41,7 @@ class PrintingService {
                 pw.Text('Paid: NPR ${paid.toStringAsFixed(2)}'),
                 pw.Text('Due: NPR ${due.toStringAsFixed(2)}'),
                 if (qrStatus != 'not_applicable') pw.Text('QR payment: ${qrStatus == 'received' ? 'Received' : 'Pending confirmation'}'),
+                if (luckyToken?.trim().isNotEmpty == true) pw.Text('Lucky draw token: ${luckyToken!.trim()}'),
               ])),
           ],
         ),

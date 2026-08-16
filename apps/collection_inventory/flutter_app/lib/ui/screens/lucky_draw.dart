@@ -19,6 +19,8 @@ class _LuckyDrawScreenState extends State<LuckyDrawScreen> {
   final purchaseTotal = TextEditingController();
   final identityType = TextEditingController(text: 'Identity document');
   final tokenNumber = TextEditingController();
+  final lookupToken = TextEditingController();
+  Map<String, Object?>? lookupResult;
   final prizeTitles = List.generate(3, (index) => TextEditingController(text: '${index == 0 ? '1st' : index == 1 ? '2nd' : '3rd'} Prize'));
   final prizeDescriptions = List.generate(3, (_) => TextEditingController());
   String? selectedCustomerId;
@@ -28,7 +30,7 @@ class _LuckyDrawScreenState extends State<LuckyDrawScreen> {
 
   @override
   void dispose() {
-    monthKey.dispose(); monthLabel.dispose(); announcement.dispose(); customerName.dispose(); purchaseTotal.dispose(); identityType.dispose(); tokenNumber.dispose();
+    monthKey.dispose(); monthLabel.dispose(); announcement.dispose(); customerName.dispose(); purchaseTotal.dispose(); identityType.dispose(); tokenNumber.dispose(); lookupToken.dispose();
     for (final controller in [...prizeTitles, ...prizeDescriptions]) {
       controller.dispose();
     }
@@ -119,7 +121,16 @@ class _LuckyDrawScreenState extends State<LuckyDrawScreen> {
           FilledButton.icon(onPressed: busy ? null : () => registerToken(p, draw), icon: const Icon(Icons.confirmation_number), label: const Text('Register token')),
           const SizedBox(height: 16),
         ],
-        _sectionTitle('Customer: published results'),
+        _sectionTitle('Customer: draw details and token status'),
+        if (draw != null) Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('${draw['month_label']} · ${draw['status']}', style: const TextStyle(fontWeight: FontWeight.bold)), const SizedBox(height: 4), Text('Draw date: ${draw['draw_date']}'), const SizedBox(height: 8), ...p.luckyDrawPrizes.where((prize) => '${prize['draw_id']}' == '${draw['id']}').map((prize) => Text('${prize['prize_rank']}. ${prize['prize_title']} — ${prize['prize_description']}'))]))),
+        if (draw != null) ...[
+          const SizedBox(height: 10),
+          TextField(controller: lookupToken, decoration: const InputDecoration(labelText: 'Enter your token number')),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(onPressed: () { final matches = p.luckyDrawTokens.where((token) => '${token['draw_id']}' == '${draw['id']}' && '${token['token_number']}'.trim() == lookupToken.text.trim()).toList(); setState(() => lookupResult = matches.isEmpty ? null : matches.first); }, icon: const Icon(Icons.search), label: const Text('Check token status')),
+          if (lookupResult != null) Card(color: const Color(0xfff1fbf5), child: ListTile(title: Text('Token ${lookupResult!['token_number']}'), subtitle: Text('Status: ${lookupResult!['status']} · Keep your token for winner verification'))),
+        ],
+        _sectionTitle('Published winners'),
         if (winners.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('Winners will appear here after the Admin completes the monthly draw.'))),
         ...winners.map((winner) => Card(child: ListTile(leading: CircleAvatar(child: Text('${winner['prize_id']}'.isEmpty ? '?' : '${winner['prize_id']}')), title: Text('${winner['token_number']}'), subtitle: Text('${winner['masked_name']} · Public masked name only')))),
       ]),

@@ -25,6 +25,16 @@ class _BillingScreenState extends State<BillingScreen> {
   double paid = 0;
   String? selectedCustomerId;
   String? lastLuckyToken;
+  List<Map<String, dynamic>> lastSavedCart = [];
+  double lastSavedSubtotal = 0;
+  double lastSavedTotal = 0;
+  double lastSavedPaid = 0;
+  double lastSavedDue = 0;
+  double lastSavedDiscount = 0;
+  String lastSavedPayment = 'CASH';
+  String lastSavedQrStatus = 'not_applicable';
+  String lastSavedCustomerName = 'Walk-in Customer';
+  String lastSavedCustomerPhone = '';
 
   @override
   void initState() {
@@ -118,7 +128,20 @@ class _BillingScreenState extends State<BillingScreen> {
 
   Future<void> save() async {
     if (cart.isEmpty) return;
+    final savedCart = cart.map((item) => Map<String, dynamic>.from(item)).toList();
+    final savedSubtotal = subtotal;
     final savedTotal = total;
+    final savedDue = due;
+    lastSavedCart = savedCart;
+    lastSavedSubtotal = savedSubtotal;
+    lastSavedTotal = savedTotal;
+    lastSavedPaid = paid;
+    lastSavedDue = savedDue;
+    lastSavedDiscount = discount;
+    lastSavedPayment = payment;
+    lastSavedQrStatus = qrStatus;
+    lastSavedCustomerName = '${customerById(selectedCustomerId)?['name'] ?? 'Walk-in Customer'}';
+    lastSavedCustomerPhone = customerPhone.text.trim();
     lastLuckyToken = null;
     await widget.p.createInvoice(customerId: selectedCustomerId, items: cart, discount: discount, paid: paid, paymentMethod: payment, qrStatus: qrStatus);
     final openDraws = widget.p.luckyDraws.where((row) => '${row['status']}' == 'OPEN').toList();
@@ -137,30 +160,27 @@ class _BillingScreenState extends State<BillingScreen> {
   }
 
   Future<void> shareWhatsApp() async {
-    if (cart.isEmpty) return;
-    final invoiceNumber = 'DRAFT-${DateTime.now().millisecondsSinceEpoch}';
+    final sourceCart = cart.isEmpty ? lastSavedCart : cart;
+    if (sourceCart.isEmpty) return;
+    final usingSavedBill = cart.isEmpty;
     final message = WhatsAppService.dailyTransactionMessage(
-      invoiceNumber: invoiceNumber,
+      invoiceNumber: usingSavedBill ? 'SAVED-${DateTime.now().millisecondsSinceEpoch}' : 'DRAFT-${DateTime.now().millisecondsSinceEpoch}',
       date: DateTime.now(),
-      customerName: '${customerById(selectedCustomerId)?['name'] ?? 'Walk-in Customer'}',
-      customerPhone: customerPhone.text.trim().isEmpty ? null : customerPhone.text.trim(),
-      items: cart.map((item) => <String, Object?>{
-        'name': item['name'],
-        'quantity': item['qty'],
-        'unitPrice': item['price'],
-      }).toList(),
-      subtotal: subtotal,
-      discount: discount,
-      total: total,
-      paid: paid,
-      due: due,
-      paymentMethod: payment,
+      customerName: usingSavedBill ? lastSavedCustomerName : '${customerById(selectedCustomerId)?['name'] ?? 'Walk-in Customer'}',
+      customerPhone: (usingSavedBill ? lastSavedCustomerPhone : customerPhone.text.trim()).isEmpty ? null : (usingSavedBill ? lastSavedCustomerPhone : customerPhone.text.trim()),
+      items: sourceCart.map((item) => <String, Object?>{'name': item['name'], 'quantity': item['qty'], 'unitPrice': item['price']}).toList(),
+      subtotal: usingSavedBill ? lastSavedSubtotal : subtotal,
+      discount: usingSavedBill ? lastSavedDiscount : discount,
+      total: usingSavedBill ? lastSavedTotal : total,
+      paid: usingSavedBill ? lastSavedPaid : paid,
+      due: usingSavedBill ? lastSavedDue : due,
+      paymentMethod: usingSavedBill ? lastSavedPayment : payment,
       upiId: upiId.text.trim().isEmpty ? null : upiId.text.trim(),
-      qrStatus: qrStatus,
+      qrStatus: usingSavedBill ? lastSavedQrStatus : qrStatus,
       luckyToken: lastLuckyToken,
       template: whatsappTemplate.text,
     );
-    await WhatsAppService().openMessage(customerPhone.text.trim(), message);
+    await WhatsAppService().openMessage(usingSavedBill ? lastSavedCustomerPhone : customerPhone.text.trim(), message);
   }
 
   @override
@@ -290,18 +310,21 @@ class _BillingScreenState extends State<BillingScreen> {
                     label: const Text('Save & Complete Bill'),
                   ),
                   OutlinedButton.icon(
-                    onPressed: cart.isEmpty
+                    onPressed: cart.isEmpty && lastSavedCart.isEmpty
                         ? null
                         : () async {
+                            final saved = cart.isEmpty;
+                            final items = saved ? lastSavedCart : cart;
                             final svc = PrintingService();
                             await svc.printA4(
-                              invoiceNo: 'PREVIEW',
-                              customer: 'Walk-in Customer',
-                              items: cart,
-                              total: total,
-                              paid: paid,
-                              due: due,
-                              qrStatus: qrStatus,
+                              invoiceNo: saved ? 'SAVED-${DateTime.now().millisecondsSinceEpoch}' : 'PREVIEW',
+                              customer: saved ? lastSavedCustomerName : 'Walk-in Customer',
+                              items: items,
+                              total: saved ? lastSavedTotal : total,
+                              paid: saved ? lastSavedPaid : paid,
+                              due: saved ? lastSavedDue : due,
+                              qrStatus: saved ? lastSavedQrStatus : qrStatus,
+                              luckyToken: lastLuckyToken,
                             );
                           },
                     icon: const Icon(Icons.print),
@@ -326,7 +349,7 @@ class _BillingScreenState extends State<BillingScreen> {
                     ],
                   ),
                   OutlinedButton.icon(
-                    onPressed: cart.isEmpty ? null : shareWhatsApp,
+                    onPressed: cart.isEmpty && lastSavedCart.isEmpty ? null : shareWhatsApp,
                     icon: const Icon(Icons.chat),
                     label: const Text('Share detailed WhatsApp summary'),
                   ),
