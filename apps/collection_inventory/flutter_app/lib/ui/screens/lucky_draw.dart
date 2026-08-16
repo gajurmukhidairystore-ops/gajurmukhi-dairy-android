@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/business_provider.dart';
+import '../../services/lucky_draw_service.dart';
 
 class LuckyDrawScreen extends StatefulWidget {
   final String role;
@@ -128,7 +129,7 @@ class _LuckyDrawScreenState extends State<LuckyDrawScreen> {
           const SizedBox(height: 10),
           TextField(key: const Key('lucky-draw-token-lookup'), controller: lookupToken, decoration: const InputDecoration(labelText: 'Enter your token number')),
           const SizedBox(height: 8),
-          OutlinedButton.icon(onPressed: () { final matches = p.luckyDrawTokens.where((token) => '${token['draw_id']}' == '${draw['id']}' && '${token['token_number']}'.trim() == lookupToken.text.trim()).toList(); setState(() => lookupResult = matches.isEmpty ? null : matches.first); }, icon: const Icon(Icons.search), label: const Text('Check token status')),
+          OutlinedButton.icon(onPressed: () { final drawTokens = p.luckyDrawTokens.where((token) => '${token['draw_id']}' == '${draw['id']}'); setState(() => lookupResult = LuckyDrawService.findTokenStatus(drawTokens, lookupToken.text)); }, icon: const Icon(Icons.search), label: const Text('Check token status')),
           if (lookupResult != null) Card(color: const Color(0xfff1fbf5), child: ListTile(title: Text('Token ${lookupResult!['token_number']}'), subtitle: Text('Status: ${lookupResult!['status']} · Keep your token for winner verification'))),
         ],
         _sectionTitle('Published winners'),

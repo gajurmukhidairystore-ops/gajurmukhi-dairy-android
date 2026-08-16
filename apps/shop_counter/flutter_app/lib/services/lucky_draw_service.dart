@@ -7,6 +7,15 @@ class LuckyDrawService {
 
   static bool isDuplicateToken(Iterable<String> existingTokenNumbers, String candidate) => existingTokenNumbers.map((value) => value.trim()).contains(candidate.trim());
 
+  static Map<String, Object?>? findTokenStatus(Iterable<Map<String, Object?>> tokens, String tokenNumber) {
+    final normalized = tokenNumber.trim();
+    if (normalized.isEmpty) return null;
+    for (final token in tokens) {
+      if ('${token['token_number']}'.trim() == normalized) return token;
+    }
+    return null;
+  }
+
   static bool canAccessIdentityRecords(String role) => role == 'admin' || role == 'shop';
 
   static bool canDeleteIdentityRecord(String role) => role == 'admin';
