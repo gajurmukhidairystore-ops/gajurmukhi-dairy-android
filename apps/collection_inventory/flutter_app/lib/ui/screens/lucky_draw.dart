@@ -123,7 +123,7 @@ class _LuckyDrawScreenState extends State<LuckyDrawScreen> {
           const SizedBox(height: 16),
         ],
         _sectionTitle('Customer: draw details and token status'),
-        if (draw != null) Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('${draw['month_label']} · ${draw['status']}', style: const TextStyle(fontWeight: FontWeight.bold)), const SizedBox(height: 4), Text('Draw date: ${draw['draw_date']}'), const SizedBox(height: 8), ...p.luckyDrawPrizes.where((prize) => '${prize['draw_id']}' == '${draw['id']}').map((prize) => Text('${prize['prize_rank']}. ${prize['prize_title']} — ${prize['prize_description']}'))]))),
+        if (draw != null) Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('${draw['month_label']} · ${draw['status']}', style: const TextStyle(fontWeight: FontWeight.bold)), const SizedBox(height: 4), Text('Draw date: ${draw['draw_date']}'), const SizedBox(height: 8), ...p.luckyDrawPrizes.where((prize) => '${prize['draw_id']}' == '${draw['id']}').map((prize) => Text('${prize['prize_rank']}. ${prize['prize_title']} — ${prize['prize_description']}')), if (winners.isNotEmpty) ...[const Divider(), const Text('Public winner summary', style: TextStyle(fontWeight: FontWeight.bold)), ...winners.map((winner) => Text('Public winner: ${winner['token_number']} · ${winner['masked_name']}'))]]))),
         if (draw != null) ...[
           const SizedBox(height: 10),
           TextField(controller: lookupToken, decoration: const InputDecoration(labelText: 'Enter your token number')),
