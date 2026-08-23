@@ -118,6 +118,9 @@
 
 - [x] Provide separate individual APK download links after the combined ZIP failed on the user’s phone
 
-- [ ] Diagnose installed APK startup failure and identify whether it affects Admin, Store, Customer, or all variants
-- [ ] Apply a targeted startup/Android compatibility fix and rebuild corrected APKs
-- [ ] Verify corrected APK installability and launch configuration before delivery
+- [x] Diagnose installed APK startup failure and identify whether it affects Admin, Store, Customer, or all variants
+- [x] Apply a targeted startup/Android compatibility fix and rebuild corrected APKs
+- [x] Verify corrected APK installability and launch configuration before delivery
+
+- [ ] Resolve Android security-reinforcement incompatibility reported by the user’s phone for the installed APKs
+- [ ] Rebuild and verify replacement APKs against the phone-compatible Android target and manifest configuration
