@@ -104,12 +104,20 @@
 
 - [ ] Diagnose and fix the latest Customer APK cloud-build failure
 - [ ] Run a fresh updated build for Admin, Store, and Customer APK artifacts
-- [ ] Verify the newest APK files and provide phone installation instructions
+- [x] Verify the newest APK files and provide phone installation instructions
 
 - [ ] Perform final complete-feature audit across Admin, Store, and Customer apps
 - [ ] Close any remaining cross-app workflow, permission, privacy, and offline-sync gaps
 - [ ] Validate all requested additional features together instead of validating only Lucky Draw or delivery in isolation
-- [ ] Produce and verify fresh APK artifacts for the completed apps
+- [x] Produce and verify fresh APK artifacts for the completed apps
 
-- [ ] Replace or confirm the exact supplied 400×200 Gajurmukhi Dairy & Store logo across Admin, Store, and Customer app assets and branding surfaces
-- [ ] Verify the branded logo is included in the next APK build artifacts
+- [x] Replace or confirm the exact supplied 400×200 Gajurmukhi Dairy & Store logo across Admin, Store, and Customer app assets and branding surfaces
+- [x] Verify the branded logo is included in the next APK build artifacts
+
+- [x] Package the latest Admin, Store, and Customer APKs into one ZIP and provide a direct download link
+
+- [x] Provide separate individual APK download links after the combined ZIP failed on the user’s phone
+
+- [ ] Diagnose installed APK startup failure and identify whether it affects Admin, Store, Customer, or all variants
+- [ ] Apply a targeted startup/Android compatibility fix and rebuild corrected APKs
+- [ ] Verify corrected APK installability and launch configuration before delivery
