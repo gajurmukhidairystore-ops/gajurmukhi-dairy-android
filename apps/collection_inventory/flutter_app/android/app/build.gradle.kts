@@ -29,7 +29,7 @@ android {
         }
     }
     // Explicit modern SDK values avoid OEM security-reinforcement rejection on current Android releases.
-    compileSdk = 35
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
