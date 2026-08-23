@@ -276,6 +276,44 @@ class AppDatabase {
   Future<List<Map<String, Object?>>> pendingSync() => db.query('sync_queue', where: 'synced=0', orderBy: 'created_at ASC');
   Future<void> markSynced(String id) async => db.update('sync_queue', {'synced': 1}, where: 'id=?', whereArgs: [id]);
 
+  static const snapshotTables = [
+    'customers', 'products', 'invoices', 'invoice_items', 'ledger', 'payments', 'advances', 'expenses',
+    'farmers', 'milk_collections', 'stock_movements', 'returns', 'credit_reminders', 'lucky_draws',
+    'lucky_draw_prizes', 'lucky_draw_tokens', 'lucky_draw_winners', 'lucky_draw_identity_records',
+    'tax_groups', 'payment_splits', 'quotes', 'quote_items', 'orders', 'users', 'audit_logs', 'sync_queue',
+  ];
+
+  Future<String> exportJson() async {
+    final tables = <String, List<Map<String, Object?>>>{};
+    for (final table in snapshotTables) {
+      tables[table] = await db.query(table);
+    }
+    return jsonEncode({'format': 'gajurmukhi-offline-backup', 'schema_version': 11, 'exported_at': DateTime.now().toUtc().toIso8601String(), 'tables': tables});
+  }
+
+  Future<void> importJson(String source) async {
+    final decoded = jsonDecode(source);
+    if (decoded is! Map || decoded['format'] != 'gajurmukhi-offline-backup' || decoded['tables'] is! Map) throw FormatException('This file is not a supported Gajurmukhi backup');
+    final rawTables = Map<Object?, Object?>.from(decoded['tables'] as Map);
+    final tables = <String, List<Map<String, Object?>>>{};
+    for (final table in snapshotTables) {
+      final rows = rawTables[table];
+      if (rows == null) { tables[table] = []; continue; }
+      if (rows is! List || rows.any((row) => row is! Map)) throw FormatException('Invalid rows in backup table $table');
+      tables[table] = rows.map((row) => Map<String, Object?>.from(row as Map)).toList();
+    }
+    await db.transaction((txn) async {
+      for (final table in snapshotTables.reversed) {
+        await txn.delete(table);
+      }
+      for (final table in snapshotTables) {
+        for (final row in tables[table]!) {
+          await txn.insert(table, row, conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+      }
+    });
+  }
+
   Future<Map<String,num>> totals() async {
     final sales = await db.rawQuery("SELECT COALESCE(SUM(total),0) v FROM invoices WHERE date(created_at)=date('now','localtime')");
     final paid = await db.rawQuery("SELECT COALESCE(SUM(paid),0) v FROM invoices WHERE date(created_at)=date('now','localtime')");

@@ -19,6 +19,7 @@ class BusinessProvider extends ChangeNotifier {
   List<Map<String,Object?>> luckyDrawTokens = [];
   List<Map<String,Object?>> luckyDrawWinners = [];
   List<Map<String,Object?>> orders = [];
+  List<Map<String,Object?>> taxGroups = [];
 
   BusinessProvider(this.db);
 
@@ -42,6 +43,7 @@ class BusinessProvider extends ChangeNotifier {
     luckyDrawTokens = await db.query('lucky_draw_tokens', orderBy: 'created_at DESC');
     luckyDrawWinners = await db.query('lucky_draw_winners', orderBy: 'selected_at DESC');
     orders = await db.query('orders', orderBy: 'created_at DESC');
+    taxGroups = await db.query('tax_groups', where: 'active=1', orderBy: 'name ASC');
     notifyListeners();
   }
 
@@ -212,6 +214,34 @@ class BusinessProvider extends ChangeNotifier {
     await refresh();
   }
 
+  static double calculateTax({required double subtotal, required double discount, required double ratePercent}) {
+    final taxable = (subtotal - discount).clamp(0, double.infinity).toDouble();
+    return taxable * ratePercent.clamp(0, 100) / 100;
+  }
+
+  static bool arePaymentSplitsBalanced({required double total, required List<Map<String, dynamic>> splits}) {
+    if (splits.isEmpty || total < 0) return false;
+    final sum = splits.fold<double>(0, (value, split) => value + ((split['amount'] as num?)?.toDouble() ?? 0));
+    return (sum - total).abs() < 0.01 && splits.every((split) => '${split['method'] ?? ''}'.trim().isNotEmpty && ((split['amount'] as num?)?.toDouble() ?? 0) > 0);
+  }
+
+  Future<void> addTaxGroup({required String name, required double rate}) async {
+    if (name.trim().isEmpty) throw ArgumentError('Tax group name is required');
+    if (rate < 0 || rate > 100) throw ArgumentError('Tax rate must be between 0 and 100 percent');
+    final id = uuid.v4();
+    final row = {'id': id, 'name': name.trim(), 'rate': rate, 'active': 1, 'created_at': DateTime.now().toIso8601String()};
+    await db.insert('tax_groups', row);
+    await db.enqueueSync(entity: 'tax_groups', entityId: id, operation: 'upsert', payload: row);
+    await refresh();
+  }
+
+  Future<void> archiveTaxGroup(String id) async {
+    final updated = await db.update('tax_groups', {'active': 0}, id);
+    if (updated == 0) throw StateError('Tax group was not found');
+    await db.enqueueSync(entity: 'tax_groups', entityId: id, operation: 'upsert', payload: {'id': id, 'active': 0});
+    await refresh();
+  }
+
   Future<void> createInvoice({
     String? customerId,
     required List<Map<String,dynamic>> items,
@@ -219,19 +249,23 @@ class BusinessProvider extends ChangeNotifier {
     required double paid,
     required String paymentMethod,
     String qrStatus = 'not_applicable',
+    double taxRate = 0,
+    List<Map<String, dynamic>> paymentSplits = const [],
   }) async {
     final id = uuid.v4();
     final no = 'INV-${DateTime.now().millisecondsSinceEpoch}';
     final subtotal = items.fold<double>(0, (s, i) => s + (i['total'] as num).toDouble());
-    final total = (subtotal - discount).clamp(0, double.infinity);
-    final due = total - paid;
+    final tax = calculateTax(subtotal: subtotal, discount: discount, ratePercent: taxRate);
+    final total = ((subtotal - discount).clamp(0, double.infinity) + tax).toDouble();
+    if (paymentMethod == 'SPLIT' && !arePaymentSplitsBalanced(total: paid, splits: paymentSplits)) throw ArgumentError('Split payment tenders must add up to the invoice total paid');
+    if (paid < 0 || paid > total) throw ArgumentError('Paid amount must be between zero and the invoice total');
+    final due = (total - paid).clamp(0, double.infinity).toDouble();
     final now = DateTime.now().toIso8601String();
 
     await db.db.transaction((txn) async {
       await txn.insert('invoices', {
         'id': id, 'invoice_no': no, 'customer_id': customerId,
-        'subtotal': subtotal, 'discount': discount, 'tax': 0,
-        'total': total, 'paid': paid, 'due': due,
+        'subtotal': subtotal, 'discount': discount, 'tax': tax, 'tax_rate': taxRate, 'total': total, 'paid': paid, 'due': due,
         'payment_method': paymentMethod, 'status': due <= 0 ? 'PAID' : 'CREDIT', 'qr_status': qrStatus, 'created_at': now
       });
       for (final i in items) {
@@ -247,6 +281,11 @@ class BusinessProvider extends ChangeNotifier {
           'created_at': now
         });
       }
+      if (paymentSplits.isNotEmpty) {
+        for (final split in paymentSplits) {
+          await txn.insert('payment_splits', {'id': uuid.v4(), 'invoice_id': id, 'method': split['method'], 'amount': split['amount'], 'reference': split['reference'], 'created_at': now});
+        }
+      }
       if (customerId != null && due > 0) {
         await txn.rawUpdate('UPDATE customers SET balance=balance+? WHERE id=?', [due, customerId]);
         await txn.insert('ledger', {
@@ -255,7 +294,7 @@ class BusinessProvider extends ChangeNotifier {
         });
       }
     });
-    await db.enqueueSync(entity: 'invoices', entityId: id, operation: 'upsert', payload: {'id': id, 'invoice_no': no, 'customer_id': customerId, 'subtotal': subtotal, 'discount': discount, 'total': total, 'paid': paid, 'due': due, 'payment_method': paymentMethod, 'status': due <= 0 ? 'PAID' : 'CREDIT', 'qr_status': qrStatus, 'items': items});
+    await db.enqueueSync(entity: 'invoices', entityId: id, operation: 'upsert', payload: {'id': id, 'invoice_no': no, 'customer_id': customerId, 'subtotal': subtotal, 'discount': discount, 'tax': tax, 'tax_rate': taxRate, 'total': total, 'paid': paid, 'due': due, 'payment_method': paymentMethod, 'status': due <= 0 ? 'PAID' : 'CREDIT', 'qr_status': qrStatus, 'items': items, 'payment_splits': paymentSplits});
     await refresh();
   }
 
@@ -470,6 +509,13 @@ class BusinessProvider extends ChangeNotifier {
     final at = DateTime.now().toIso8601String();
     await db.update('orders', {'call_attempted_at': at}, orderId);
     await db.enqueueSync(entity: 'orders', entityId: orderId, operation: 'upsert', payload: {'id': orderId, 'call_attempted_at': at});
+    await refresh();
+  }
+
+  Future<String> exportBackup() => db.exportJson();
+
+  Future<void> restoreBackup(String source) async {
+    await db.importJson(source);
     await refresh();
   }
 

@@ -11,6 +11,17 @@ void main() {
     expect(trackingIntervalSecondsForDistance(999), 15);
   });
 
+  test('tax calculation applies to the discounted taxable amount', () {
+    expect(BusinessProvider.calculateTax(subtotal: 1000, discount: 100, ratePercent: 13), closeTo(117, 0.001));
+    expect(BusinessProvider.calculateTax(subtotal: 1000, discount: 1200, ratePercent: 13), 0);
+  });
+
+  test('split tenders must be positive and balance to the paid amount', () {
+    expect(BusinessProvider.arePaymentSplitsBalanced(total: 1000, splits: [{'method': 'CASH', 'amount': 600}, {'method': 'QR', 'amount': 400}]), isTrue);
+    expect(BusinessProvider.arePaymentSplitsBalanced(total: 1000, splits: [{'method': 'CASH', 'amount': 600}, {'method': 'QR', 'amount': 399}]), isFalse);
+    expect(BusinessProvider.arePaymentSplitsBalanced(total: 1000, splits: [{'method': 'CASH', 'amount': 1000}, {'method': 'QR', 'amount': 0}]), isFalse);
+  });
+
   test('only the assigned Collector can transmit live GPS', () {
     expect(RolePermissions.canStartDeliveryTracking('collector'), isTrue);
     expect(RolePermissions.canStartDeliveryTracking('admin'), isFalse);

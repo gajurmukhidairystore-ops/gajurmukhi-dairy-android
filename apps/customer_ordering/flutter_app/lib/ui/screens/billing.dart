@@ -1,7 +1,10 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../providers/business_provider.dart';
 import '../../services/printing_service.dart';
@@ -23,6 +26,9 @@ class _BillingScreenState extends State<BillingScreen> {
   String payment = 'CASH';
   double discount = 0;
   double paid = 0;
+  double taxRate = 0;
+  String selectedTaxGroupId = 'NONE';
+  List<Map<String, dynamic>> paymentTenders = [];
   String? selectedCustomerId;
   String? lastLuckyToken;
   List<Map<String, dynamic>> lastSavedCart = [];
@@ -62,10 +68,12 @@ class _BillingScreenState extends State<BillingScreen> {
   }
 
   double get subtotal => cart.fold(0, (s, i) => s + (i['total'] as num).toDouble());
-  double get total => (subtotal - discount).clamp(0, double.infinity);
+  double get tax => BusinessProvider.calculateTax(subtotal: subtotal, discount: discount, ratePercent: taxRate);
+  double get total => ((subtotal - discount).clamp(0, double.infinity) + tax).toDouble();
   double get due => (total - paid).clamp(0, double.infinity).toDouble();
+  bool get hasQrTender => payment == 'QR' || (payment == 'SPLIT' && paymentTenders.any((t) => '${t['method']}' == 'QR'));
 
-  String get qrStatus => payment == 'QR' ? (paid >= total && total > 0 ? 'received' : 'pending') : 'not_applicable';
+  String get qrStatus => hasQrTender ? (paid >= total && total > 0 ? 'received' : 'pending') : 'not_applicable';
 
   String get paymentQrData => 'upi://pay?pa=${Uri.encodeComponent(upiId.text.trim())}&pn=${Uri.encodeComponent('Gajurmukhi Dairy & Store')}&am=${total.toStringAsFixed(2)}&cu=INR&tn=${Uri.encodeComponent('Gajurmukhi bill')}';
 
@@ -143,7 +151,7 @@ class _BillingScreenState extends State<BillingScreen> {
     lastSavedCustomerName = '${customerById(selectedCustomerId)?['name'] ?? 'Walk-in Customer'}';
     lastSavedCustomerPhone = customerPhone.text.trim();
     lastLuckyToken = null;
-    await widget.p.createInvoice(customerId: selectedCustomerId, items: cart, discount: discount, paid: paid, paymentMethod: payment, qrStatus: qrStatus);
+    await widget.p.createInvoice(customerId: selectedCustomerId, items: cart, discount: discount, paid: paid, paymentMethod: payment, qrStatus: qrStatus, taxRate: taxRate, paymentSplits: payment == 'SPLIT' ? paymentTenders : const []);
     final openDraws = widget.p.luckyDraws.where((row) => '${row['status']}' == 'OPEN').toList();
     final draw = openDraws.isEmpty ? null : openDraws.first;
     if (savedTotal >= 1000 && draw != null && mounted) {
@@ -156,7 +164,105 @@ class _BillingScreenState extends State<BillingScreen> {
     }
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(lastLuckyToken == null ? 'Invoice saved' : 'Invoice saved with lucky token $lastLuckyToken')));
-    setState(() => cart.clear());
+    setState(() { cart.clear(); paid = 0; paymentTenders = []; });
+  }
+
+  Future<void> _manageSplitTenders() async {
+    final cash = TextEditingController(text: '${paymentTenders.where((t) => '${t['method']}' == 'CASH').fold<double>(0, (s, t) => s + ((t['amount'] as num?)?.toDouble() ?? 0))}');
+    final qr = TextEditingController(text: '${paymentTenders.where((t) => '${t['method']}' == 'QR').fold<double>(0, (s, t) => s + ((t['amount'] as num?)?.toDouble() ?? 0))}');
+    final bank = TextEditingController(text: '${paymentTenders.where((t) => '${t['method']}' == 'BANK').fold<double>(0, (s, t) => s + ((t['amount'] as num?)?.toDouble() ?? 0))}');
+    final result = await showDialog<List<Map<String, dynamic>>>(context: context, builder: (dialogContext) => AlertDialog(
+      title: const Text('Split payment tenders'),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
+        Text('Invoice total: NPR ${total.toStringAsFixed(2)}'),
+        const SizedBox(height: 10),
+        TextField(controller: cash, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Cash amount')),
+        const SizedBox(height: 8),
+        TextField(controller: qr, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'QR amount')),
+        const SizedBox(height: 8),
+        TextField(controller: bank, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Bank amount')),
+      ]),
+      actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')), FilledButton(onPressed: () {
+        final values = <Map<String, dynamic>>[];
+        for (final entry in [('CASH', cash.text), ('QR', qr.text), ('BANK', bank.text)]) {
+          final amount = double.tryParse(entry.$2.trim()) ?? 0;
+          if (amount > 0) values.add({'method': entry.$1, 'amount': amount, 'reference': null});
+        }
+        final sum = values.fold<double>(0, (s, item) => s + (item['amount'] as double));
+        if ((sum - total).abs() > 0.01) {
+          ScaffoldMessenger.of(dialogContext).showSnackBar(const SnackBar(content: Text('Tender amounts must equal the invoice total')));
+          return;
+        }
+        Navigator.pop(dialogContext, values);
+      }, child: const Text('Apply'))],
+    ));
+    cash.dispose(); qr.dispose(); bank.dispose();
+    if (result == null) return;
+    setState(() { paymentTenders = result; paid = result.fold<double>(0, (s, item) => s + (item['amount'] as num).toDouble()); });
+  }
+
+  Future<void> _exportBackup() async {
+    try {
+      final source = await widget.p.exportBackup();
+      final file = XFile.fromData(Uint8List.fromList(utf8.encode(source)), name: 'gajurmukhi-backup-${DateTime.now().millisecondsSinceEpoch}.json', mimeType: 'application/json');
+      await Share.shareXFiles([file], text: 'Gajurmukhi Dairy & Store offline backup');
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not export backup: $error')));
+    }
+  }
+
+  Future<void> _restoreBackup() async {
+    final picked = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['json'], withData: true);
+    if (!mounted || picked == null) return;
+    final bytes = picked.files.single.bytes;
+    if (bytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('The selected backup file could not be read')));
+      return;
+    }
+    final confirmed = await showDialog<bool>(context: context, builder: (dialogContext) => AlertDialog(
+      title: const Text('Restore backup?'),
+      content: const Text('Restore replaces the local database with this backup. Export the current data first if you may need it later.'),
+      actions: [TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Restore'))],
+    ));
+    if (confirmed != true) return;
+    try {
+      await widget.p.restoreBackup(utf8.decode(bytes));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Backup restored successfully')));
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not restore backup: $error')));
+    }
+  }
+
+  Future<void> _addTaxGroup() async {
+    final name = TextEditingController();
+    final rate = TextEditingController();
+    final ok = await showDialog<bool>(context: context, builder: (dialogContext) => AlertDialog(
+      title: const Text('Add tax group'),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextField(controller: name, decoration: const InputDecoration(labelText: 'Tax group name')),
+        const SizedBox(height: 8),
+        TextField(controller: rate, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Rate (%)')),
+      ]),
+      actions: [TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Save'))],
+    ));
+    if (ok == true) {
+      try {
+        await widget.p.addTaxGroup(name: name.text, rate: double.tryParse(rate.text) ?? -1);
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tax group saved')));
+      } catch (error) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save tax group: $error')));
+      }
+    }
+    name.dispose(); rate.dispose();
+  }
+
+  Future<void> _archiveTaxGroup(String id) async {
+    try {
+      await widget.p.archiveTaxGroup(id);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tax group archived')));
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not archive tax group: $error')));
+    }
   }
 
   Future<void> shareWhatsApp() async {
@@ -239,10 +345,32 @@ class _BillingScreenState extends State<BillingScreen> {
                   ),
                   Text('Subtotal: NPR ${subtotal.toStringAsFixed(2)}'),
                   Text('Discount: NPR ${discount.toStringAsFixed(2)}'),
+                  Text('Tax (${taxRate.toStringAsFixed(2)}%): NPR ${tax.toStringAsFixed(2)}'),
                   Text('Total: NPR ${total.toStringAsFixed(2)}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   Text('Paid: NPR ${paid.toStringAsFixed(2)}'),
                   Text('Due: NPR ${due.toStringAsFixed(2)}'),
                   if (lastLuckyToken != null) Text('Lucky draw token: $lastLuckyToken', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple)),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedTaxGroupId,
+                    items: [
+                      const DropdownMenuItem(value: 'NONE', child: Text('No tax')),
+                      ...widget.p.taxGroups.map((group) => DropdownMenuItem(value: '${group['id']}', child: Text('${group['name']} · ${group['rate']}%'))),
+                    ],
+                    onChanged: (value) {
+                      final group = widget.p.taxGroups.where((row) => '${row['id']}' == value).toList();
+                      setState(() { selectedTaxGroupId = value ?? 'NONE'; taxRate = group.isEmpty ? 0 : (group.first['rate'] as num).toDouble(); });
+                    },
+                    decoration: const InputDecoration(labelText: 'Tax group'),
+                  ),
+                  const SizedBox(height: 8),
+                  if (widget.p.taxGroups.isNotEmpty) ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    title: const Text('Tax groups'),
+                    subtitle: Text('${widget.p.taxGroups.length} active group(s)'),
+                    children: widget.p.taxGroups.map((group) => ListTile(dense: true, title: Text('${group['name']}'), subtitle: Text('${group['rate']}%'), trailing: IconButton(icon: const Icon(Icons.archive_outlined), tooltip: 'Archive tax group', onPressed: () => _archiveTaxGroup('${group['id']}')))).toList(),
+                  ),
+                  Align(alignment: Alignment.centerLeft, child: TextButton.icon(onPressed: _addTaxGroup, icon: const Icon(Icons.add), label: const Text('Add tax group'))),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
                     initialValue: payment,
@@ -251,12 +379,16 @@ class _BillingScreenState extends State<BillingScreen> {
                       DropdownMenuItem(value: 'QR', child: Text('QR')),
                       DropdownMenuItem(value: 'BANK', child: Text('Bank')),
                       DropdownMenuItem(value: 'CREDIT', child: Text('Credit')),
+                      DropdownMenuItem(value: 'SPLIT', child: Text('Split payment')),
                     ],
-                    onChanged: (v) => setState(() => payment = v!),
+                    onChanged: (v) => setState(() { payment = v!; if (payment != 'SPLIT') paymentTenders = []; }),
                     decoration: const InputDecoration(labelText: 'Payment'),
                   ),
                   const SizedBox(height: 8),
-                  if (payment == 'QR') ...[
+                  if (payment == 'SPLIT') OutlinedButton.icon(onPressed: total <= 0 ? null : _manageSplitTenders, icon: const Icon(Icons.call_split), label: Text(paymentTenders.isEmpty ? 'Add split tenders' : 'Edit split tenders · Paid NPR ${paid.toStringAsFixed(2)}'))
+                  else TextField(keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Paid amount (NPR)'), onChanged: (value) => setState(() => paid = double.tryParse(value) ?? 0)),
+                  const SizedBox(height: 8),
+                  if (hasQrTender) ...[
                     TextField(
                       controller: upiId,
                       onChanged: (_) => setState(() {}),
@@ -352,6 +484,17 @@ class _BillingScreenState extends State<BillingScreen> {
                     onPressed: cart.isEmpty && lastSavedCart.isEmpty ? null : shareWhatsApp,
                     icon: const Icon(Icons.chat),
                     label: const Text('Share detailed WhatsApp summary'),
+                  ),
+                  const SizedBox(height: 8),
+                  ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.cloud_sync),
+                    title: const Text('Backup & restore'),
+                    subtitle: const Text('Share a complete offline JSON backup or restore one from this phone'),
+                    children: [
+                      Align(alignment: Alignment.centerLeft, child: OutlinedButton.icon(onPressed: _exportBackup, icon: const Icon(Icons.ios_share), label: const Text('Export / share backup'))),
+                      Align(alignment: Alignment.centerLeft, child: OutlinedButton.icon(onPressed: _restoreBackup, icon: const Icon(Icons.restore), label: const Text('Restore JSON backup'))),
+                    ],
                   ),
                 ],
               ),
