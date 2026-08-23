@@ -101,3 +101,15 @@
 - [x] Add in-app browser with role-aware navigation and Android Internet permission
 
 - [ ] Verify the requested monthly Lucky Draw workflow end to end: NPR 1,000 eligibility, token issuance, private consented identity record, configurable three prizes and message, auditable winner selection, and masked public announcement
+
+- [ ] Diagnose and fix the latest Customer APK cloud-build failure
+- [ ] Run a fresh updated build for Admin, Store, and Customer APK artifacts
+- [ ] Verify the newest APK files and provide phone installation instructions
+
+- [ ] Perform final complete-feature audit across Admin, Store, and Customer apps
+- [ ] Close any remaining cross-app workflow, permission, privacy, and offline-sync gaps
+- [ ] Validate all requested additional features together instead of validating only Lucky Draw or delivery in isolation
+- [ ] Produce and verify fresh APK artifacts for the completed apps
+
+- [ ] Replace or confirm the exact supplied 400×200 Gajurmukhi Dairy & Store logo across Admin, Store, and Customer app assets and branding surfaces
+- [ ] Verify the branded logo is included in the next APK build artifacts

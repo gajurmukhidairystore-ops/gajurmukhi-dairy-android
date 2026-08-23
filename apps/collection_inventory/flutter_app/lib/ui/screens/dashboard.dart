@@ -123,7 +123,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(16),
-                        child: Image.asset('assets/gajurmukhi-app-logo.png', width: 48, height: 48, fit: BoxFit.cover),
+                        child: Image.asset('assets/gajurmukhi-app-logo.png', width: 128, height: 64, fit: BoxFit.contain),
                       ),
                       const SizedBox(width: 12),
                       const Expanded(
