@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
-import 'package:just_audio/just_audio.dart';
+import 'package:just_audio/just_audio.dart' as ja;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -27,10 +27,10 @@ class _MusicScreenState extends State<MusicScreen> {
   final title = TextEditingController();
   final source = TextEditingController();
   final playlistName = TextEditingController();
-  final audioPlayer = AudioPlayer();
+  final audioPlayer = ja.AudioPlayer();
   StreamSubscription<Duration>? positionSubscription;
   StreamSubscription<Duration?>? durationSubscription;
-  StreamSubscription<PlayerState>? playerStateSubscription;
+  StreamSubscription<ja.PlayerState>? playerStateSubscription;
   final List<Map<String, String>> tracks = [];
   final Map<String, List<String>> playlists = {};
   YoutubePlayerController? youtubeController;
@@ -52,7 +52,7 @@ class _MusicScreenState extends State<MusicScreen> {
       if (mounted) setState(() => duration = value ?? Duration.zero);
     });
     playerStateSubscription = audioPlayer.playerStateStream.listen((value) {
-      if (value.processingState == ProcessingState.completed) {
+      if (value.processingState == ja.ProcessingState.completed) {
         _next();
       } else if (mounted) {
         setState(() => isPlaying = value.playing);
@@ -224,9 +224,9 @@ class _MusicScreenState extends State<MusicScreen> {
       final path = track['source'] ?? '';
       final mediaItem = MediaItem(id: id, title: track['title'] ?? 'Audio', artist: 'Gajurmukhi Dairy & Store');
       if (track['type'] == 'local') {
-        await audioPlayer.setAudioSource(AudioSource.file(path, tag: mediaItem));
+        await audioPlayer.setAudioSource(ja.AudioSource.file(path, tag: mediaItem));
       } else {
-        await audioPlayer.setAudioSource(AudioSource.uri(Uri.parse(path), tag: mediaItem));
+        await audioPlayer.setAudioSource(ja.AudioSource.uri(Uri.parse(path), tag: mediaItem));
       }
       if (autoPlay) await audioPlayer.play();
     }
