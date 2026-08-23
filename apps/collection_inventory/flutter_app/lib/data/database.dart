@@ -293,7 +293,7 @@ class AppDatabase {
 
   Future<void> importJson(String source) async {
     final decoded = jsonDecode(source);
-    if (decoded is! Map || decoded['format'] != 'gajurmukhi-offline-backup' || decoded['tables'] is! Map) throw FormatException('This file is not a supported Gajurmukhi backup');
+    if (decoded is! Map || decoded['format'] != 'gajurmukhi-offline-backup' || decoded['tables'] is! Map) throw const FormatException('This file is not a supported Gajurmukhi backup');
     final rawTables = Map<Object?, Object?>.from(decoded['tables'] as Map);
     final tables = <String, List<Map<String, Object?>>>{};
     for (final table in snapshotTables) {
