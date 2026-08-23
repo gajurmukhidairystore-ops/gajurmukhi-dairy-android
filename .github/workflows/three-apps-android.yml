@@ -59,6 +59,7 @@ jobs:
         run: |
           sed -i "s/applicationId = \"com.example.gajurmukhi_dairy_business_pro\"/applicationId = \"$APPLICATION_ID\"/" build.gradle.kts
           sed -i "s/namespace = \"com.example.gajurmukhi_dairy_business_pro\"/namespace = \"$APPLICATION_ID\"/" build.gradle.kts
+          sed -i "s/^package com.example.gajurmukhi_dairy_business_pro$/package $APPLICATION_ID/" src/main/kotlin/com/example/gajurmukhi_dairy_business_pro/MainActivity.kt
 
       - name: Resolve dependencies
         run: flutter pub get

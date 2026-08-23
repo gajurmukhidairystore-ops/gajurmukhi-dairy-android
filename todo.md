@@ -122,5 +122,8 @@
 - [x] Apply a targeted startup/Android compatibility fix and rebuild corrected APKs
 - [x] Verify corrected APK installability and launch configuration before delivery
 
-- [ ] Resolve Android security-reinforcement incompatibility reported by the user’s phone for the installed APKs
-- [ ] Rebuild and verify replacement APKs against the phone-compatible Android target and manifest configuration
+- [x] Resolve Android security-reinforcement incompatibility reported by the user’s phone for the installed APKs
+- [x] Rebuild and verify replacement APKs against the phone-compatible Android target and manifest configuration
+
+- [ ] Fix confirmed ClassNotFoundException: align each APK manifest launch activity with the compiled MainActivity package
+- [ ] Verify all three replacement APKs contain the declared launch activity before delivery
