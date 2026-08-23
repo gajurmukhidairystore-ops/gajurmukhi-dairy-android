@@ -7,7 +7,7 @@ class AppDatabase {
 
   Future<void> init({String? path}) async {
     final p = path ?? join(await getDatabasesPath(), 'gajurmukhi_pro.db');
-    db = await openDatabase(p, version: 11, onCreate: _create, onUpgrade: _upgrade);
+    db = await openDatabase(p, version: 12, onCreate: _create, onUpgrade: _upgrade);
   }
 
   Future<void> _create(Database db, int version) async {
@@ -110,7 +110,7 @@ class AppDatabase {
     await db.execute('''
       CREATE TABLE lucky_draw_prizes(
         id TEXT PRIMARY KEY, draw_id TEXT NOT NULL, prize_rank INTEGER NOT NULL,
-        prize_title TEXT NOT NULL, prize_description TEXT NOT NULL, active INTEGER DEFAULT 1
+        prize_title TEXT NOT NULL, prize_description TEXT NOT NULL, prize_value TEXT, active INTEGER DEFAULT 1
       )
     ''');
     await db.execute('''
@@ -212,7 +212,7 @@ class AppDatabase {
     }
     if (oldV < 6) {
       await db.execute('''CREATE TABLE lucky_draws(id TEXT PRIMARY KEY, month_key TEXT NOT NULL, month_label TEXT NOT NULL, minimum_purchase REAL NOT NULL DEFAULT 1000, announcement TEXT NOT NULL, draw_date TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'OPEN', created_by TEXT, created_at TEXT NOT NULL, published_at TEXT)''');
-      await db.execute('''CREATE TABLE lucky_draw_prizes(id TEXT PRIMARY KEY, draw_id TEXT NOT NULL, prize_rank INTEGER NOT NULL, prize_title TEXT NOT NULL, prize_description TEXT NOT NULL, active INTEGER DEFAULT 1)''');
+      await db.execute('''CREATE TABLE lucky_draw_prizes(id TEXT PRIMARY KEY, draw_id TEXT NOT NULL, prize_rank INTEGER NOT NULL, prize_title TEXT NOT NULL, prize_description TEXT NOT NULL, prize_value TEXT, active INTEGER DEFAULT 1)''');
       await db.execute('''CREATE TABLE lucky_draw_tokens(id TEXT PRIMARY KEY, draw_id TEXT NOT NULL, token_number TEXT NOT NULL, invoice_id TEXT, customer_id TEXT, customer_name TEXT NOT NULL, identity_reference TEXT, identity_type TEXT, consented INTEGER NOT NULL DEFAULT 0, issued_by TEXT, status TEXT NOT NULL DEFAULT 'ELIGIBLE', created_at TEXT NOT NULL)''');
       await db.execute('''CREATE TABLE lucky_draw_winners(id TEXT PRIMARY KEY, draw_id TEXT NOT NULL, prize_id TEXT NOT NULL, token_id TEXT NOT NULL, token_number TEXT NOT NULL, masked_name TEXT NOT NULL, selected_at TEXT NOT NULL)''');
     }
@@ -257,6 +257,9 @@ class AppDatabase {
       await db.execute('ALTER TABLE orders ADD COLUMN call_unlocked_at TEXT');
       await db.execute('ALTER TABLE orders ADD COLUMN call_attempted_at TEXT');
     }
+    if (oldV < 12) {
+      await db.execute('ALTER TABLE lucky_draw_prizes ADD COLUMN prize_value TEXT');
+    }
   }
 
   Future<List<Map<String,Object?>>> query(String table, {String? where, List<Object?>? args, String? orderBy}) =>
@@ -288,7 +291,7 @@ class AppDatabase {
     for (final table in snapshotTables) {
       tables[table] = await db.query(table);
     }
-    return jsonEncode({'format': 'gajurmukhi-offline-backup', 'schema_version': 11, 'exported_at': DateTime.now().toUtc().toIso8601String(), 'tables': tables});
+    return jsonEncode({'format': 'gajurmukhi-offline-backup', 'schema_version': 12, 'exported_at': DateTime.now().toUtc().toIso8601String(), 'tables': tables});
   }
 
   Future<void> importJson(String source) async {

@@ -25,6 +25,7 @@ class _LuckyDrawScreenState extends State<LuckyDrawScreen> {
   Map<String, Object?>? lookupResult;
   final prizeTitles = List.generate(3, (index) => TextEditingController(text: '${index == 0 ? '1st' : index == 1 ? '2nd' : '3rd'} Prize'));
   final prizeDescriptions = List.generate(3, (_) => TextEditingController());
+  final prizeValues = List.generate(3, (_) => TextEditingController());
   String? selectedCustomerId;
   String? identityReference;
   bool consented = false;
@@ -33,7 +34,7 @@ class _LuckyDrawScreenState extends State<LuckyDrawScreen> {
   @override
   void dispose() {
     monthKey.dispose(); monthLabel.dispose(); announcement.dispose(); customerName.dispose(); purchaseTotal.dispose(); identityType.dispose(); tokenNumber.dispose(); lookupToken.dispose();
-    for (final controller in [...prizeTitles, ...prizeDescriptions]) {
+    for (final controller in [...prizeTitles, ...prizeDescriptions, ...prizeValues]) {
       controller.dispose();
     }
     super.dispose();
@@ -52,7 +53,7 @@ class _LuckyDrawScreenState extends State<LuckyDrawScreen> {
         monthLabel: monthLabel.text,
         announcement: announcement.text,
         drawDate: DateTime.now().add(const Duration(days: 30)),
-        prizes: List.generate(3, (index) => {'title': prizeTitles[index].text, 'description': prizeDescriptions[index].text}),
+        prizes: List.generate(3, (index) => {'title': prizeTitles[index].text, 'description': prizeDescriptions[index].text, 'value': prizeValues[index].text}),
         createdBy: widget.role,
       );
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Monthly lucky draw created')));
@@ -103,7 +104,7 @@ class _LuckyDrawScreenState extends State<LuckyDrawScreen> {
             const SizedBox(height: 10), TextField(controller: monthLabel, decoration: const InputDecoration(labelText: 'Public month label')),
             const SizedBox(height: 10), TextField(controller: announcement, maxLines: 3, decoration: const InputDecoration(labelText: 'Announcement message')),
             const SizedBox(height: 10),
-            ...List.generate(3, (index) => Padding(padding: const EdgeInsets.only(bottom: 10), child: Row(children: [Expanded(child: TextField(controller: prizeTitles[index], decoration: InputDecoration(labelText: '${index + 1}. Prize title'))), const SizedBox(width: 8), Expanded(child: TextField(controller: prizeDescriptions[index], decoration: const InputDecoration(labelText: 'Prize detail')))]))),
+            ...List.generate(3, (index) => Padding(padding: const EdgeInsets.only(bottom: 10), child: Column(children: [Row(children: [Expanded(child: TextField(controller: prizeTitles[index], decoration: InputDecoration(labelText: '${index + 1}. Prize title'))), const SizedBox(width: 8), Expanded(child: TextField(controller: prizeValues[index], decoration: const InputDecoration(labelText: 'Prize value / amount')))]), const SizedBox(height: 6), TextField(controller: prizeDescriptions[index], decoration: const InputDecoration(labelText: 'Prize detail / message'))]))),
             FilledButton.icon(onPressed: busy ? null : () => createDraw(p), icon: const Icon(Icons.add), label: const Text('Create monthly draw')),
           ] else ...[
             Card(child: ListTile(title: Text('${draw['month_label']} · ${draw['status']}'), subtitle: Text('${tokens.length} eligible token(s) · draw date ${draw['draw_date']}'))),
@@ -124,7 +125,7 @@ class _LuckyDrawScreenState extends State<LuckyDrawScreen> {
           const SizedBox(height: 16),
         ],
         _sectionTitle('Customer: draw details and token status'),
-        if (draw != null) Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('${draw['month_label']} · ${draw['status']}', style: const TextStyle(fontWeight: FontWeight.bold)), const SizedBox(height: 4), Text('Draw date: ${draw['draw_date']}'), const SizedBox(height: 8), ...p.luckyDrawPrizes.where((prize) => '${prize['draw_id']}' == '${draw['id']}').map((prize) => Text('${prize['prize_rank']}. ${prize['prize_title']} — ${prize['prize_description']}')), if (winners.isNotEmpty) ...[const Divider(), const Text('Public winner summary', style: TextStyle(fontWeight: FontWeight.bold)), ...winners.map((winner) => Text('Public winner: ${winner['token_number']} · ${winner['masked_name']}'))]]))),
+        if (draw != null) Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('${draw['month_label']} · ${draw['status']}', style: const TextStyle(fontWeight: FontWeight.bold)), const SizedBox(height: 4), Text('Draw date: ${draw['draw_date']}'), const SizedBox(height: 8), ...p.luckyDrawPrizes.where((prize) => '${prize['draw_id']}' == '${draw['id']}').map((prize) => Text('${prize['prize_rank']}. ${prize['prize_title']} · ${prize['prize_value'] ?? ''} — ${prize['prize_description']}')), if (winners.isNotEmpty) ...[const Divider(), const Text('Public winner summary', style: TextStyle(fontWeight: FontWeight.bold)), ...winners.map((winner) => Text('Public winner: ${winner['token_number']} · ${winner['masked_name']}'))]]))),
         if (draw != null) ...[
           const SizedBox(height: 10),
           TextField(key: const Key('lucky-draw-token-lookup'), controller: lookupToken, decoration: const InputDecoration(labelText: 'Enter your token number')),

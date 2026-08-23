@@ -321,7 +321,7 @@ class BusinessProvider extends ChangeNotifier {
     await db.enqueueSync(entity: 'lucky_draws', entityId: drawId, operation: 'upsert', payload: draw);
     for (var i = 0; i < prizes.length; i++) {
       final prizeId = uuid.v4();
-      final row = {'id': prizeId, 'draw_id': drawId, 'prize_rank': i + 1, 'prize_title': prizes[i]['title']!.trim(), 'prize_description': prizes[i]['description']!.trim(), 'active': 1};
+      final row = {'id': prizeId, 'draw_id': drawId, 'prize_rank': i + 1, 'prize_title': prizes[i]['title']!.trim(), 'prize_description': prizes[i]['description']!.trim(), 'prize_value': '${prizes[i]['value'] ?? ''}'.trim(), 'active': 1};
       await db.insert('lucky_draw_prizes', row);
       await db.enqueueSync(entity: 'lucky_draw_prizes', entityId: prizeId, operation: 'upsert', payload: row);
     }

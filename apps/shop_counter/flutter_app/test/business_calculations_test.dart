@@ -70,6 +70,10 @@ void main() {
     expect(RolePermissions.canAccess('shop', 4), isFalse);
     expect(RolePermissions.canAccess('collector', 4), isTrue);
     expect(RolePermissions.canAccess('collector', 1), isFalse);
+    expect(RolePermissions.canAccess('admin', 12), isTrue);
+    expect(RolePermissions.canAccess('shop', 12), isTrue);
+    expect(RolePermissions.canAccess('collector', 12), isTrue);
+    expect(RolePermissions.canAccess('customer', 12), isTrue);
   });
 
   test('login routing lands collectors on collection and staff on overview', () {
@@ -167,6 +171,14 @@ void main() {
     final label = LuckyDrawService.publicWinnerLabel(tokenNumber: 'GJ-123', customerName: 'Sita Sharma');
     expect(label, 'GJ-123 · S*** S*****');
     expect(label, isNot(contains('identity')));
+  });
+
+  test('lucky draw announcement includes prize value without exposing identity', () {
+    final message = LuckyDrawService.announcement(monthLabel: 'August 2026', message: 'Thank you', winners: [{'prize_title': '1st Prize', 'prize_value': 'NPR 10,000', 'token_number': 'GJ-001', 'customer_name': 'Ram Shrestha'}]);
+    expect(message, contains('NPR 10,000'));
+    expect(message, contains('GJ-001'));
+    expect(message, contains('R** S******'));
+    expect(message, isNot(contains('Identity')));
   });
 
   test('lucky draw selects distinct customer winners and formats announcement', () {

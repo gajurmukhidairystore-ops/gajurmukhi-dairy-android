@@ -93,3 +93,11 @@
 - [ ] Add tests for customer location validation, tracking cadence, distance thresholds, and call gating
 - [ ] Complete remaining POS multi-tender, tax-group, and backup/restore verification
 - [ ] Rebuild and verify debug APK, release APK, and release AAB for all three apps after delivery changes
+
+- [x] Audit complete inherited requirement set: lucky draw, dairy collection, FAT/SNF, grocery inventory, POS, ledger, QR, WhatsApp, reports, AI, music, browsing, orders, reminders, GPS delivery, and role access
+- [x] Preserve and close any gaps across Admin, Store, and Customer interfaces without removing prior features
+- [x] Re-verify lucky-draw eligibility, token registration, private identity records, masked winners, prizes, and month-end publication
+- [ ] Re-run complete three-app automated analysis, tests, and Android artifact verification after the full-feature audit
+- [x] Add in-app browser with role-aware navigation and Android Internet permission
+
+- [ ] Verify the requested monthly Lucky Draw workflow end to end: NPR 1,000 eligibility, token issuance, private consented identity record, configurable three prizes and message, auditable winner selection, and masked public announcement

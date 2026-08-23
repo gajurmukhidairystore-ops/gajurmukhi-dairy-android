@@ -59,6 +59,7 @@ class LuckyDrawService {
         'prize_rank': prize['prize_rank'],
         'prize_title': prize['prize_title'],
         'prize_description': prize['prize_description'],
+        'prize_value': prize['prize_value'],
         'token_number': selected['token_number'],
         'customer_id': selected['customer_id'],
         'customer_name': selected['customer_name'],
@@ -81,7 +82,9 @@ class LuckyDrawService {
       '',
     ];
     for (final winner in winners) {
-      lines.add('${winner['prize_title']}: ${publicWinnerLabel(tokenNumber: '${winner['token_number']}', customerName: '${winner['customer_name']}')}');
+      final value = '${winner['prize_value'] ?? ''}'.trim();
+      final valueLabel = value.isEmpty ? '' : ' [$value]';
+      lines.add('${winner['prize_title']}$valueLabel: ${publicWinnerLabel(tokenNumber: '${winner['token_number']}', customerName: '${winner['customer_name']}')}');
     }
     lines.add('');
     lines.add('Congratulations. This was a free promotional draw for eligible purchases of NPR 1,000 or more.');

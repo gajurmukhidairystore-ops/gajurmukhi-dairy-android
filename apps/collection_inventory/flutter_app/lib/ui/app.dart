@@ -9,6 +9,7 @@ import '../services/local_auth_service.dart';
 import '../services/role_permissions.dart';
 import 'screens/ai.dart';
 import 'screens/billing.dart';
+import 'screens/browser.dart';
 import 'screens/customers.dart';
 import 'screens/dashboard.dart';
 import 'screens/dairy.dart';
@@ -262,6 +263,7 @@ class _MainShellState extends State<MainShell> {
       MusicScreen(role: widget.session.role),
       LuckyDrawScreen(role: widget.session.role),
       OrdersScreen(p, role: widget.session.role, currentUserId: widget.session.username),
+      const BrowserScreen(),
     ];
     const navigationTargets = [0, 5, 2, 4, 7];
     final selectedNavigationIndex = navigationTargets.indexOf(index);
@@ -272,13 +274,14 @@ class _MainShellState extends State<MainShell> {
         actions: [
           IconButton(onPressed: p.refresh, icon: const Icon(Icons.sync)),
               PopupMenuButton<String>(
-                onSelected: (value) { if (value == 'games') navigate(8); if (value == 'music') navigate(9); if (value == 'lucky_draw') navigate(10); if (value == 'orders') navigate(11); if (value == 'logout') Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => LocalAuthGate(db: p.db)), (_) => false); if (value == 'users' && widget.session.role == 'admin') Navigator.of(context).push(MaterialPageRoute(builder: (_) => UsersScreen(p.db))); },
+                onSelected: (value) { if (value == 'games') navigate(8); if (value == 'music') navigate(9); if (value == 'lucky_draw') navigate(10); if (value == 'orders') navigate(11); if (value == 'browser') navigate(12); if (value == 'logout') Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => LocalAuthGate(db: p.db)), (_) => false); if (value == 'users' && widget.session.role == 'admin') Navigator.of(context).push(MaterialPageRoute(builder: (_) => UsersScreen(p.db))); },
               itemBuilder: (_) => [
               const PopupMenuItem(value: 'games', child: Text('Daily progress & rewards')),
               const PopupMenuItem(value: 'music', child: Text('YouTube Music')),
                 if (widget.session.role == 'admin') const PopupMenuItem(value: 'users', child: Text('Users & Roles')),
               if (widget.session.role == 'admin' || widget.session.role == 'shop' || widget.session.role == 'customer') const PopupMenuItem(value: 'lucky_draw', child: Text('Monthly Lucky Draw')),
               if (widget.session.role == 'admin' || widget.session.role == 'shop' || widget.session.role == 'customer') const PopupMenuItem(value: 'orders', child: Text('Orders & Reminders')),
+              if (widget.session.role == 'admin' || widget.session.role == 'shop' || widget.session.role == 'collector' || widget.session.role == 'customer') const PopupMenuItem(value: 'browser', child: Text('In-app browser')),
               const PopupMenuItem(value: 'logout', child: Text('Sign out')),
             ],
           ),
