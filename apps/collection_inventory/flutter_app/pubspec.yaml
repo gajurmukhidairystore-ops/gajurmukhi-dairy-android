@@ -38,6 +38,8 @@ dependencies:
   just_audio: ^0.9.42
   audio_service: ^0.18.15
   just_audio_background: ^0.0.1-beta.13
+  flutter_local_notifications: ^17.2.3
+  timezone: ^0.9.4
   geolocator: ^13.0.2
 
 dev_dependencies:

@@ -17,6 +17,7 @@ class BusinessProvider extends ChangeNotifier {
   List<Map<String,Object?>> luckyDrawPrizes = [];
   List<Map<String,Object?>> luckyDrawTokens = [];
   List<Map<String,Object?>> luckyDrawWinners = [];
+  List<Map<String,Object?>> orders = [];
 
   BusinessProvider(this.db);
 
@@ -39,6 +40,7 @@ class BusinessProvider extends ChangeNotifier {
     luckyDrawPrizes = await db.query('lucky_draw_prizes', orderBy: 'prize_rank ASC');
     luckyDrawTokens = await db.query('lucky_draw_tokens', orderBy: 'created_at DESC');
     luckyDrawWinners = await db.query('lucky_draw_winners', orderBy: 'selected_at DESC');
+    orders = await db.query('orders', orderBy: 'created_at DESC');
     notifyListeners();
   }
 
@@ -355,8 +357,27 @@ class BusinessProvider extends ChangeNotifier {
     return LuckyDrawService.announcement(monthLabel: '${draw['month_label']}', message: '${draw['announcement']}', winners: winners.map((winner) => {...winner}).toList());
   }
 
+  Future<Map<String, Object?>> createOrder({required String customerName, String phone = '', String? customerId, required String itemsJson, required double total, DateTime? deliveryAt, DateTime? reminderAt, bool reminderEnabled = true, String note = ''}) async {
+    if (customerName.trim().isEmpty || total <= 0) throw ArgumentError('Customer name and a positive order total are required.');
+    final id = uuid.v4();
+    final now = DateTime.now().toIso8601String();
+    final row = <String, Object?>{'id': id, 'order_no': 'ORD-${DateTime.now().millisecondsSinceEpoch}', 'customer_id': customerId, 'customer_name': customerName.trim(), 'phone': phone.trim(), 'items_json': itemsJson, 'total': total, 'status': 'PENDING', 'order_at': now, 'delivery_at': deliveryAt?.toIso8601String(), 'reminder_at': reminderAt?.toIso8601String(), 'reminder_enabled': reminderEnabled ? 1 : 0, 'note': note.trim(), 'created_at': now};
+    await db.insert('orders', row);
+    await db.enqueueSync(entity: 'orders', entityId: id, operation: 'upsert', payload: row);
+    await refresh();
+    return row;
+  }
+
+  Future<void> updateOrderStatus(String orderId, String status) async {
+    const allowed = {'PENDING', 'CONFIRMED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'};
+    if (!allowed.contains(status)) throw ArgumentError('Unsupported order status.');
+    await db.update('orders', {'status': status}, orderId);
+    await db.enqueueSync(entity: 'orders', entityId: orderId, operation: 'upsert', payload: {'id': orderId, 'status': status});
+    await refresh();
+  }
+
   String exportSnapshot() => jsonEncode({
     'customers': customers, 'products': products, 'farmers': farmers,
-    'milk': milk, 'totals': totals
+    'milk': milk, 'orders': orders, 'totals': totals
   });
 }

@@ -7,7 +7,7 @@ class AppDatabase {
 
   Future<void> init({String? path}) async {
     final p = path ?? join(await getDatabasesPath(), 'gajurmukhi_pro.db');
-    db = await openDatabase(p, version: 8, onCreate: _create, onUpgrade: _upgrade);
+    db = await openDatabase(p, version: 9, onCreate: _create, onUpgrade: _upgrade);
   }
 
   Future<void> _create(Database db, int version) async {
@@ -154,6 +154,15 @@ class AppDatabase {
       )
     ''');
     await db.execute('''
+      CREATE TABLE orders(
+        id TEXT PRIMARY KEY, order_no TEXT UNIQUE NOT NULL, customer_id TEXT,
+        customer_name TEXT NOT NULL, phone TEXT, items_json TEXT NOT NULL,
+        total REAL NOT NULL, status TEXT NOT NULL DEFAULT 'PENDING',
+        order_at TEXT NOT NULL, delivery_at TEXT, reminder_at TEXT,
+        reminder_enabled INTEGER DEFAULT 1, note TEXT, created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
       CREATE TABLE lucky_draw_identity_records(
         id TEXT PRIMARY KEY, token_id TEXT NOT NULL, identity_type TEXT NOT NULL,
         private_reference TEXT NOT NULL, consented INTEGER NOT NULL DEFAULT 0,
@@ -214,6 +223,9 @@ class AppDatabase {
       await db.execute('''CREATE TABLE payment_splits(id TEXT PRIMARY KEY, invoice_id TEXT NOT NULL, method TEXT NOT NULL, amount REAL NOT NULL, reference TEXT, created_at TEXT NOT NULL)''');
       await db.execute('''CREATE TABLE quotes(id TEXT PRIMARY KEY, quote_no TEXT UNIQUE NOT NULL, customer_id TEXT, subtotal REAL NOT NULL, discount REAL DEFAULT 0, tax REAL DEFAULT 0, total REAL NOT NULL, status TEXT DEFAULT 'DRAFT', note TEXT, created_at TEXT NOT NULL)''');
       await db.execute('''CREATE TABLE quote_items(id TEXT PRIMARY KEY, quote_id TEXT NOT NULL, product_id TEXT NOT NULL, product_name TEXT NOT NULL, qty REAL NOT NULL, price REAL NOT NULL, discount REAL DEFAULT 0, total REAL NOT NULL)''');
+    }
+    if (oldV < 9) {
+      await db.execute('''CREATE TABLE orders(id TEXT PRIMARY KEY, order_no TEXT UNIQUE NOT NULL, customer_id TEXT, customer_name TEXT NOT NULL, phone TEXT, items_json TEXT NOT NULL, total REAL NOT NULL, status TEXT NOT NULL DEFAULT 'PENDING', order_at TEXT NOT NULL, delivery_at TEXT, reminder_at TEXT, reminder_enabled INTEGER DEFAULT 1, note TEXT, created_at TEXT NOT NULL)''');
     }
   }
 
