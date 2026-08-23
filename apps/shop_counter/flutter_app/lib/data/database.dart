@@ -7,13 +7,14 @@ class AppDatabase {
 
   Future<void> init({String? path}) async {
     final p = path ?? join(await getDatabasesPath(), 'gajurmukhi_pro.db');
-    db = await openDatabase(p, version: 9, onCreate: _create, onUpgrade: _upgrade);
+    db = await openDatabase(p, version: 11, onCreate: _create, onUpgrade: _upgrade);
   }
 
   Future<void> _create(Database db, int version) async {
     await db.execute('''
       CREATE TABLE customers(
         id TEXT PRIMARY KEY, name TEXT NOT NULL, phone TEXT, address TEXT,
+        latitude REAL, longitude REAL, location_accuracy REAL, location_captured_at TEXT,
         credit_limit REAL DEFAULT 0, balance REAL DEFAULT 0,
         active INTEGER DEFAULT 1, created_at TEXT NOT NULL
       )
@@ -159,7 +160,13 @@ class AppDatabase {
         customer_name TEXT NOT NULL, phone TEXT, items_json TEXT NOT NULL,
         total REAL NOT NULL, status TEXT NOT NULL DEFAULT 'PENDING',
         order_at TEXT NOT NULL, delivery_at TEXT, reminder_at TEXT,
-        reminder_enabled INTEGER DEFAULT 1, note TEXT, created_at TEXT NOT NULL
+        reminder_enabled INTEGER DEFAULT 1, note TEXT, created_at TEXT NOT NULL,
+        delivery_agent_id TEXT, delivery_agent_name TEXT, delivery_agent_phone TEXT,
+        destination_latitude REAL, destination_longitude REAL,
+        last_driver_latitude REAL, last_driver_longitude REAL, last_driver_accuracy REAL,
+        last_driver_at TEXT, driver_distance_meters REAL, tracking_interval_seconds INTEGER DEFAULT 30,
+        arrival_radius_meters REAL DEFAULT 100, call_unlocked INTEGER DEFAULT 0,
+        call_unlocked_at TEXT, call_attempted_at TEXT
       )
     ''');
     await db.execute('''
@@ -226,6 +233,29 @@ class AppDatabase {
     }
     if (oldV < 9) {
       await db.execute('''CREATE TABLE orders(id TEXT PRIMARY KEY, order_no TEXT UNIQUE NOT NULL, customer_id TEXT, customer_name TEXT NOT NULL, phone TEXT, items_json TEXT NOT NULL, total REAL NOT NULL, status TEXT NOT NULL DEFAULT 'PENDING', order_at TEXT NOT NULL, delivery_at TEXT, reminder_at TEXT, reminder_enabled INTEGER DEFAULT 1, note TEXT, created_at TEXT NOT NULL)''');
+    }
+    if (oldV < 10) {
+      await db.execute('ALTER TABLE customers ADD COLUMN latitude REAL');
+      await db.execute('ALTER TABLE customers ADD COLUMN longitude REAL');
+      await db.execute('ALTER TABLE customers ADD COLUMN location_accuracy REAL');
+      await db.execute('ALTER TABLE customers ADD COLUMN location_captured_at TEXT');
+    }
+    if (oldV < 11) {
+      await db.execute('ALTER TABLE orders ADD COLUMN delivery_agent_id TEXT');
+      await db.execute('ALTER TABLE orders ADD COLUMN delivery_agent_name TEXT');
+      await db.execute('ALTER TABLE orders ADD COLUMN delivery_agent_phone TEXT');
+      await db.execute('ALTER TABLE orders ADD COLUMN destination_latitude REAL');
+      await db.execute('ALTER TABLE orders ADD COLUMN destination_longitude REAL');
+      await db.execute('ALTER TABLE orders ADD COLUMN last_driver_latitude REAL');
+      await db.execute('ALTER TABLE orders ADD COLUMN last_driver_longitude REAL');
+      await db.execute('ALTER TABLE orders ADD COLUMN last_driver_accuracy REAL');
+      await db.execute('ALTER TABLE orders ADD COLUMN last_driver_at TEXT');
+      await db.execute('ALTER TABLE orders ADD COLUMN driver_distance_meters REAL');
+      await db.execute('ALTER TABLE orders ADD COLUMN tracking_interval_seconds INTEGER DEFAULT 30');
+      await db.execute('ALTER TABLE orders ADD COLUMN arrival_radius_meters REAL DEFAULT 100');
+      await db.execute('ALTER TABLE orders ADD COLUMN call_unlocked INTEGER DEFAULT 0');
+      await db.execute('ALTER TABLE orders ADD COLUMN call_unlocked_at TEXT');
+      await db.execute('ALTER TABLE orders ADD COLUMN call_attempted_at TEXT');
     }
   }
 

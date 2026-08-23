@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../data/database.dart';
 import '../services/lucky_draw_service.dart';
+import '../services/location_service.dart';
 
 class BusinessProvider extends ChangeNotifier {
   final AppDatabase db;
@@ -44,11 +45,38 @@ class BusinessProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addCustomer(String name, String phone, String address) async {
+  static void validateCustomerLocation({double? latitude, double? longitude}) {
+    if ((latitude == null) != (longitude == null)) throw ArgumentError('Latitude and longitude must be captured together');
+    if (latitude != null && (latitude < -90 || latitude > 90 || longitude! < -180 || longitude > 180)) {
+      throw ArgumentError('Customer location coordinates are invalid');
+    }
+  }
+
+  Future<void> addCustomer(String name, String phone, String address, {double? latitude, double? longitude, double? locationAccuracy, DateTime? locationCapturedAt}) async {
+    if (name.trim().isEmpty) throw ArgumentError('Customer name is required');
+    validateCustomerLocation(latitude: latitude, longitude: longitude);
     final id = uuid.v4();
-    final row = {'id': id, 'name': name, 'phone': phone, 'address': address, 'created_at': DateTime.now().toIso8601String()};
+    final row = <String, Object?>{'id': id, 'name': name.trim(), 'phone': phone.trim(), 'address': address.trim(), 'latitude': latitude, 'longitude': longitude, 'location_accuracy': locationAccuracy, 'location_captured_at': latitude == null ? null : (locationCapturedAt ?? DateTime.now()).toIso8601String(), 'created_at': DateTime.now().toIso8601String()};
     await db.insert('customers', row);
     await db.enqueueSync(entity: 'customers', entityId: id, operation: 'upsert', payload: row);
+    await refresh();
+  }
+
+  Future<void> updateCustomerLocation(String customerId, {required double latitude, required double longitude, double? accuracy}) async {
+    validateCustomerLocation(latitude: latitude, longitude: longitude);
+    final capturedAt = DateTime.now().toIso8601String();
+    final row = <String, Object?>{'latitude': latitude, 'longitude': longitude, 'location_accuracy': accuracy, 'location_captured_at': capturedAt};
+    final updated = await db.update('customers', row, customerId);
+    if (updated == 0) throw StateError('Customer was not found');
+    await db.enqueueSync(entity: 'customers', entityId: customerId, operation: 'upsert', payload: {'id': customerId, ...row});
+    await refresh();
+  }
+
+  Future<void> clearCustomerLocation(String customerId) async {
+    final row = <String, Object?>{'latitude': null, 'longitude': null, 'location_accuracy': null, 'location_captured_at': null};
+    final updated = await db.update('customers', row, customerId);
+    if (updated == 0) throw StateError('Customer was not found');
+    await db.enqueueSync(entity: 'customers', entityId: customerId, operation: 'upsert', payload: {'id': customerId, ...row});
     await refresh();
   }
 
@@ -357,11 +385,18 @@ class BusinessProvider extends ChangeNotifier {
     return LuckyDrawService.announcement(monthLabel: '${draw['month_label']}', message: '${draw['announcement']}', winners: winners.map((winner) => {...winner}).toList());
   }
 
+  static const nearCustomerThresholdMeters = 1000.0;
+  static const defaultArrivalRadiusMeters = 100.0;
+
+  static int trackingIntervalForDistance(double? distanceMeters) => distanceMeters != null && distanceMeters <= nearCustomerThresholdMeters ? 15 : 30;
+
+  static bool isArrivalEligible({required double distanceMeters, double radiusMeters = defaultArrivalRadiusMeters}) => distanceMeters >= 0 && distanceMeters <= radiusMeters;
+
   Future<Map<String, Object?>> createOrder({required String customerName, String phone = '', String? customerId, required String itemsJson, required double total, DateTime? deliveryAt, DateTime? reminderAt, bool reminderEnabled = true, String note = ''}) async {
     if (customerName.trim().isEmpty || total <= 0) throw ArgumentError('Customer name and a positive order total are required.');
     final id = uuid.v4();
     final now = DateTime.now().toIso8601String();
-    final row = <String, Object?>{'id': id, 'order_no': 'ORD-${DateTime.now().millisecondsSinceEpoch}', 'customer_id': customerId, 'customer_name': customerName.trim(), 'phone': phone.trim(), 'items_json': itemsJson, 'total': total, 'status': 'PENDING', 'order_at': now, 'delivery_at': deliveryAt?.toIso8601String(), 'reminder_at': reminderAt?.toIso8601String(), 'reminder_enabled': reminderEnabled ? 1 : 0, 'note': note.trim(), 'created_at': now};
+    final row = <String, Object?>{'id': id, 'order_no': 'ORD-${DateTime.now().millisecondsSinceEpoch}', 'customer_id': customerId, 'customer_name': customerName.trim(), 'phone': phone.trim(), 'items_json': itemsJson, 'total': total, 'status': 'PENDING', 'order_at': now, 'delivery_at': deliveryAt?.toIso8601String(), 'reminder_at': reminderAt?.toIso8601String(), 'reminder_enabled': reminderEnabled ? 1 : 0, 'note': note.trim(), 'created_at': now, 'tracking_interval_seconds': 30, 'arrival_radius_meters': defaultArrivalRadiusMeters, 'call_unlocked': 0};
     await db.insert('orders', row);
     await db.enqueueSync(entity: 'orders', entityId: id, operation: 'upsert', payload: row);
     await refresh();
@@ -371,8 +406,70 @@ class BusinessProvider extends ChangeNotifier {
   Future<void> updateOrderStatus(String orderId, String status) async {
     const allowed = {'PENDING', 'CONFIRMED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'};
     if (!allowed.contains(status)) throw ArgumentError('Unsupported order status.');
-    await db.update('orders', {'status': status}, orderId);
+    final updated = await db.update('orders', {'status': status}, orderId);
+    if (updated == 0) throw StateError('Order was not found');
     await db.enqueueSync(entity: 'orders', entityId: orderId, operation: 'upsert', payload: {'id': orderId, 'status': status});
+    await refresh();
+  }
+
+  Future<void> assignDeliveryAgent({required String orderId, required String agentId, required String agentName, required String agentPhone}) async {
+    if (agentId.trim().isEmpty || agentName.trim().isEmpty) throw ArgumentError('Delivery agent name and ID are required');
+    final rows = await db.query('orders', where: 'id=?', args: [orderId]);
+    if (rows.isEmpty) throw StateError('Order was not found');
+    final order = rows.first;
+    double? latitude = (order['destination_latitude'] as num?)?.toDouble();
+    double? longitude = (order['destination_longitude'] as num?)?.toDouble();
+    final customerId = '${order['customer_id'] ?? ''}'.trim();
+    if ((latitude == null || longitude == null) && customerId.isNotEmpty) {
+      final customers = await db.query('customers', where: 'id=?', args: [customerId]);
+      if (customers.isNotEmpty) {
+        latitude = (customers.first['latitude'] as num?)?.toDouble();
+        longitude = (customers.first['longitude'] as num?)?.toDouble();
+      }
+    }
+    if (latitude == null || longitude == null) throw StateError('Capture the customer GPS location before assigning delivery');
+    final row = <String, Object?>{'delivery_agent_id': agentId.trim(), 'delivery_agent_name': agentName.trim(), 'delivery_agent_phone': agentPhone.trim(), 'destination_latitude': latitude, 'destination_longitude': longitude, 'tracking_interval_seconds': 30, 'arrival_radius_meters': defaultArrivalRadiusMeters, 'call_unlocked': 0, 'call_unlocked_at': null, 'call_attempted_at': null};
+    await db.update('orders', row, orderId);
+    await db.enqueueSync(entity: 'orders', entityId: orderId, operation: 'upsert', payload: {'id': orderId, ...row});
+    await refresh();
+  }
+
+  Future<void> unassignDeliveryAgent(String orderId) async {
+    final row = <String, Object?>{'delivery_agent_id': null, 'delivery_agent_name': null, 'delivery_agent_phone': null, 'last_driver_latitude': null, 'last_driver_longitude': null, 'last_driver_accuracy': null, 'last_driver_at': null, 'driver_distance_meters': null, 'call_unlocked': 0, 'call_unlocked_at': null, 'call_attempted_at': null};
+    final updated = await db.update('orders', row, orderId);
+    if (updated == 0) throw StateError('Order was not found');
+    await db.enqueueSync(entity: 'orders', entityId: orderId, operation: 'upsert', payload: {'id': orderId, ...row});
+    await refresh();
+  }
+
+  Future<Map<String, Object?>> recordDriverLocation({required String orderId, required String agentId, required double latitude, required double longitude, double? accuracy}) async {
+    validateCustomerLocation(latitude: latitude, longitude: longitude);
+    final rows = await db.query('orders', where: 'id=?', args: [orderId]);
+    if (rows.isEmpty) throw StateError('Order was not found');
+    final order = rows.first;
+    if ('${order['delivery_agent_id'] ?? ''}' != agentId) throw StateError('This order is not assigned to this delivery agent');
+    final destinationLatitude = (order['destination_latitude'] as num?)?.toDouble();
+    final destinationLongitude = (order['destination_longitude'] as num?)?.toDouble();
+    if (destinationLatitude == null || destinationLongitude == null) throw StateError('Order has no customer destination');
+    final distance = distanceMetersBetween(fromLatitude: latitude, fromLongitude: longitude, toLatitude: destinationLatitude, toLongitude: destinationLongitude);
+    final radius = (order['arrival_radius_meters'] as num?)?.toDouble() ?? defaultArrivalRadiusMeters;
+    final alreadyUnlocked = order['call_unlocked'] == 1;
+    final eligible = alreadyUnlocked || isArrivalEligible(distanceMeters: distance, radiusMeters: radius);
+    final now = DateTime.now().toIso8601String();
+    final row = <String, Object?>{'last_driver_latitude': latitude, 'last_driver_longitude': longitude, 'last_driver_accuracy': accuracy, 'last_driver_at': now, 'driver_distance_meters': distance, 'tracking_interval_seconds': trackingIntervalForDistance(distance), 'call_unlocked': eligible ? 1 : 0, 'call_unlocked_at': alreadyUnlocked ? order['call_unlocked_at'] : (eligible ? now : null)};
+    await db.update('orders', row, orderId);
+    await db.enqueueSync(entity: 'orders', entityId: orderId, operation: 'upsert', payload: {'id': orderId, ...row});
+    await refresh();
+    return {...order, ...row};
+  }
+
+  Future<void> markDeliveryCallAttempted(String orderId) async {
+    final rows = await db.query('orders', where: 'id=?', args: [orderId]);
+    if (rows.isEmpty) throw StateError('Order was not found');
+    if (rows.first['call_unlocked'] != 1) throw StateError('Call unlocks only after the driver is within 100 metres of the customer');
+    final at = DateTime.now().toIso8601String();
+    await db.update('orders', {'call_attempted_at': at}, orderId);
+    await db.enqueueSync(entity: 'orders', entityId: orderId, operation: 'upsert', payload: {'id': orderId, 'call_attempted_at': at});
     await refresh();
   }
 

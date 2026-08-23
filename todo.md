@@ -83,3 +83,13 @@
 - [x] Complete foreground collector GPS check-in with shop distance and visible tracking status
 - [ ] Complete final role, staff, inventory, QR, logo, sharing, and receipt integration verification on a physical Android device
 - [x] Run final web tests, cloud Flutter analysis/tests, and cloud APK/AAB build verification
+
+- [ ] Add customer house-address fields with GPS coordinate capture, accuracy, and capture timestamp
+- [ ] Add Admin/Store/Customer customer-location display and map-link workflow
+- [ ] Add delivery-agent assignment and order-linked live location persistence
+- [ ] Add 30-second default and 15-second near-customer tracking cadence
+- [ ] Add 100-metre arrival-radius eligibility for a manual driver call action
+- [ ] Add delivery tracking UI and role permissions across Admin, Store, and Customer apps
+- [ ] Add tests for customer location validation, tracking cadence, distance thresholds, and call gating
+- [ ] Complete remaining POS multi-tender, tax-group, and backup/restore verification
+- [ ] Rebuild and verify debug APK, release APK, and release AAB for all three apps after delivery changes

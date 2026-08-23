@@ -16,4 +16,8 @@ class RolePermissions {
 
   static bool canCreateMilkCollection(String role) => role == 'admin' || role == 'collector';
   static bool canRemoveMilkCollection(String role) => role == 'admin';
+  static bool canAssignDelivery(String role) => role == 'admin' || role == 'shop';
+  static bool canTrackDelivery(String role) => role == 'admin' || role == 'shop' || role == 'collector';
+  static bool canStartDeliveryTracking(String role) => role == 'collector';
+  static bool canCallCustomer(String role) => role == 'admin' || role == 'shop' || role == 'collector';
 }

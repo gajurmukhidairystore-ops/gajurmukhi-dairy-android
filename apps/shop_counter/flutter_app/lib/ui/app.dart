@@ -261,7 +261,7 @@ class _MainShellState extends State<MainShell> {
       GamesScreen(role: widget.session.role),
       MusicScreen(role: widget.session.role),
       LuckyDrawScreen(role: widget.session.role),
-      OrdersScreen(p, role: widget.session.role),
+      OrdersScreen(p, role: widget.session.role, currentUserId: widget.session.username),
     ];
     const navigationTargets = [0, 5, 2, 4, 7];
     final selectedNavigationIndex = navigationTargets.indexOf(index);
