@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:audioplayers/audioplayers.dart';
+import 'package:audio_service/audio_service.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -26,6 +28,9 @@ class _MusicScreenState extends State<MusicScreen> {
   final source = TextEditingController();
   final playlistName = TextEditingController();
   final audioPlayer = AudioPlayer();
+  StreamSubscription<Duration>? positionSubscription;
+  StreamSubscription<Duration?>? durationSubscription;
+  StreamSubscription<PlayerState>? playerStateSubscription;
   final List<Map<String, String>> tracks = [];
   final Map<String, List<String>> playlists = {};
   YoutubePlayerController? youtubeController;
@@ -40,16 +45,19 @@ class _MusicScreenState extends State<MusicScreen> {
   @override
   void initState() {
     super.initState();
-    audioPlayer.onPositionChanged.listen((value) {
+    positionSubscription = audioPlayer.positionStream.listen((value) {
       if (mounted) setState(() => position = value);
     });
-    audioPlayer.onDurationChanged.listen((value) {
-      if (mounted) setState(() => duration = value);
+    durationSubscription = audioPlayer.durationStream.listen((value) {
+      if (mounted) setState(() => duration = value ?? Duration.zero);
     });
-    audioPlayer.onPlayerStateChanged.listen((value) {
-      if (mounted) setState(() => isPlaying = value == PlayerState.playing);
+    playerStateSubscription = audioPlayer.playerStateStream.listen((value) {
+      if (value.processingState == ProcessingState.completed) {
+        _next();
+      } else if (mounted) {
+        setState(() => isPlaying = value.playing);
+      }
     });
-    audioPlayer.onPlayerComplete.listen((_) => _next());
     _loadLibrary();
   }
 
@@ -212,13 +220,15 @@ class _MusicScreenState extends State<MusicScreen> {
         autoPlay: autoPlay,
         params: const YoutubePlayerParams(showControls: true, showFullscreenButton: true, privacyEnhancedMode: true),
       );
-    } else if (autoPlay) {
+    } else {
       final path = track['source'] ?? '';
+      final mediaItem = MediaItem(id: id, title: track['title'] ?? 'Audio', artist: 'Gajurmukhi Dairy & Store');
       if (track['type'] == 'local') {
-        await audioPlayer.play(DeviceFileSource(path));
+        await audioPlayer.setAudioSource(AudioSource.file(path, tag: mediaItem));
       } else {
-        await audioPlayer.play(UrlSource(path));
+        await audioPlayer.setAudioSource(AudioSource.uri(Uri.parse(path), tag: mediaItem));
       }
+      if (autoPlay) await audioPlayer.play();
     }
     if (mounted) setState(() {});
   }
@@ -231,7 +241,7 @@ class _MusicScreenState extends State<MusicScreen> {
     if (isPlaying) {
       await audioPlayer.pause();
     } else {
-      await audioPlayer.resume();
+      await audioPlayer.play();
     }
   }
 
@@ -357,6 +367,9 @@ class _MusicScreenState extends State<MusicScreen> {
   @override
   void dispose() {
     youtubeController?.close();
+    positionSubscription?.cancel();
+    durationSubscription?.cancel();
+    playerStateSubscription?.cancel();
     audioPlayer.dispose();
     title.dispose();
     source.dispose();
