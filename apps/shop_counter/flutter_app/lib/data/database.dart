@@ -7,7 +7,7 @@ class AppDatabase {
 
   Future<void> init({String? path}) async {
     final p = path ?? join(await getDatabasesPath(), 'gajurmukhi_pro.db');
-    db = await openDatabase(p, version: 7, onCreate: _create, onUpgrade: _upgrade);
+    db = await openDatabase(p, version: 8, onCreate: _create, onUpgrade: _upgrade);
   }
 
   Future<void> _create(Database db, int version) async {
@@ -22,7 +22,7 @@ class AppDatabase {
       CREATE TABLE products(
         id TEXT PRIMARY KEY, name TEXT NOT NULL, category TEXT, unit TEXT NOT NULL,
         sale_price REAL NOT NULL, purchase_price REAL DEFAULT 0, stock REAL DEFAULT 0,
-        low_stock REAL DEFAULT 5, barcode TEXT, active INTEGER DEFAULT 1
+        low_stock REAL DEFAULT 5, barcode TEXT, sku TEXT, size TEXT, color TEXT, variant_group TEXT, tax_group_id TEXT, active INTEGER DEFAULT 1
       )
     ''');
     await db.execute('''
@@ -30,7 +30,7 @@ class AppDatabase {
         id TEXT PRIMARY KEY, invoice_no TEXT UNIQUE NOT NULL, customer_id TEXT,
         subtotal REAL NOT NULL, discount REAL DEFAULT 0, tax REAL DEFAULT 0,
         total REAL NOT NULL, paid REAL DEFAULT 0, due REAL DEFAULT 0,
-        payment_method TEXT, status TEXT DEFAULT 'PAID', qr_status TEXT DEFAULT 'not_applicable', note TEXT, created_at TEXT NOT NULL
+        tax_rate REAL DEFAULT 0, payment_method TEXT, status TEXT DEFAULT 'PAID', qr_status TEXT DEFAULT 'not_applicable', note TEXT, created_at TEXT NOT NULL
       )
     ''');
     await db.execute('''
@@ -128,6 +128,32 @@ class AppDatabase {
       )
     ''');
     await db.execute('''
+      CREATE TABLE tax_groups(
+        id TEXT PRIMARY KEY, name TEXT NOT NULL, rate REAL NOT NULL DEFAULT 0,
+        active INTEGER DEFAULT 1, created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE payment_splits(
+        id TEXT PRIMARY KEY, invoice_id TEXT NOT NULL, method TEXT NOT NULL,
+        amount REAL NOT NULL, reference TEXT, created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE quotes(
+        id TEXT PRIMARY KEY, quote_no TEXT UNIQUE NOT NULL, customer_id TEXT,
+        subtotal REAL NOT NULL, discount REAL DEFAULT 0, tax REAL DEFAULT 0,
+        total REAL NOT NULL, status TEXT DEFAULT 'DRAFT', note TEXT, created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE quote_items(
+        id TEXT PRIMARY KEY, quote_id TEXT NOT NULL, product_id TEXT NOT NULL,
+        product_name TEXT NOT NULL, qty REAL NOT NULL, price REAL NOT NULL,
+        discount REAL DEFAULT 0, total REAL NOT NULL
+      )
+    ''');
+    await db.execute('''
       CREATE TABLE lucky_draw_identity_records(
         id TEXT PRIMARY KEY, token_id TEXT NOT NULL, identity_type TEXT NOT NULL,
         private_reference TEXT NOT NULL, consented INTEGER NOT NULL DEFAULT 0,
@@ -176,6 +202,18 @@ class AppDatabase {
     }
     if (oldV < 7) {
       await db.execute('''CREATE TABLE lucky_draw_identity_records(id TEXT PRIMARY KEY, token_id TEXT NOT NULL, identity_type TEXT NOT NULL, private_reference TEXT NOT NULL, consented INTEGER NOT NULL DEFAULT 0, retention_until TEXT, created_at TEXT NOT NULL, deleted_at TEXT)''');
+    }
+    if (oldV < 8) {
+      await db.execute('ALTER TABLE products ADD COLUMN sku TEXT');
+      await db.execute('ALTER TABLE products ADD COLUMN size TEXT');
+      await db.execute('ALTER TABLE products ADD COLUMN color TEXT');
+      await db.execute('ALTER TABLE products ADD COLUMN variant_group TEXT');
+      await db.execute('ALTER TABLE products ADD COLUMN tax_group_id TEXT');
+      await db.execute('ALTER TABLE invoices ADD COLUMN tax_rate REAL DEFAULT 0');
+      await db.execute('''CREATE TABLE tax_groups(id TEXT PRIMARY KEY, name TEXT NOT NULL, rate REAL NOT NULL DEFAULT 0, active INTEGER DEFAULT 1, created_at TEXT NOT NULL)''');
+      await db.execute('''CREATE TABLE payment_splits(id TEXT PRIMARY KEY, invoice_id TEXT NOT NULL, method TEXT NOT NULL, amount REAL NOT NULL, reference TEXT, created_at TEXT NOT NULL)''');
+      await db.execute('''CREATE TABLE quotes(id TEXT PRIMARY KEY, quote_no TEXT UNIQUE NOT NULL, customer_id TEXT, subtotal REAL NOT NULL, discount REAL DEFAULT 0, tax REAL DEFAULT 0, total REAL NOT NULL, status TEXT DEFAULT 'DRAFT', note TEXT, created_at TEXT NOT NULL)''');
+      await db.execute('''CREATE TABLE quote_items(id TEXT PRIMARY KEY, quote_id TEXT NOT NULL, product_id TEXT NOT NULL, product_name TEXT NOT NULL, qty REAL NOT NULL, price REAL NOT NULL, discount REAL DEFAULT 0, total REAL NOT NULL)''');
     }
   }
 
