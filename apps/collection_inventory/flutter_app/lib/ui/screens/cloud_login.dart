@@ -29,10 +29,7 @@ class _CloudLoginScreenState extends State<CloudLoginScreen> {
       final session = createAdmin
           ? await cloud.registerAdmin(workspaceName: workspace.text, displayName: name.text, username: username.text, pin: pin.text)
           : await cloud.login(username: username.text, pin: pin.text);
-      var local = await widget.auth.login(username.text, pin.text);
-      if (local == null) {
-        local = await widget.auth.createUser(name: session.account.displayName, username: session.account.username, pin: pin.text, role: session.account.role);
-      }
+      final local = await widget.auth.login(username.text, pin.text) ?? await widget.auth.createUser(name: session.account.displayName, username: session.account.username, pin: pin.text, role: session.account.role);
       if (!mounted) return;
       widget.onLoggedIn(local);
     } catch (value) {

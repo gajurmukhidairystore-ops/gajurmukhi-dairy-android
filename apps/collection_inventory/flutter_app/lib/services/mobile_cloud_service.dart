@@ -54,7 +54,7 @@ class MobileCloudService {
 
   Future<CloudSession?> savedSession() async {
     final values = await Future.wait([storage.read(key: _tokenKey), storage.read(key: _expiresKey), storage.read(key: _accountKey)]);
-    if (values.any((value) => value == null || value!.isEmpty)) return null;
+    if (values.any((value) => value == null || value.isEmpty)) return null;
     final expiry = DateTime.tryParse(values[1]!);
     if (expiry == null || expiry.isBefore(DateTime.now())) { await clearSession(); return null; }
     final account = CloudAccount.fromJson(jsonDecode(values[2]!) as Map<String, dynamic>);
