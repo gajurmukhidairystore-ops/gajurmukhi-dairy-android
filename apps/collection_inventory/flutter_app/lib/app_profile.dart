@@ -7,7 +7,7 @@ class AppProfile {
 
   const AppProfile({required this.kind, required this.name, required this.subtitle});
 
-  static const admin = AppProfile(kind: GajurmukhiAppKind.admin, name: 'Gajurmukhi Admin', subtitle: 'Operations, collection, inventory, and reports');
+  static const admin = AppProfile(kind: GajurmukhiAppKind.admin, name: 'Gajurmukhi One', subtitle: 'Admin, Store, Collector, and Customer in one app');
   static const store = AppProfile(kind: GajurmukhiAppKind.store, name: 'Gajurmukhi Store', subtitle: 'Billing, payments, fulfillment, and stock');
   static const customer = AppProfile(kind: GajurmukhiAppKind.customer, name: 'Gajurmukhi Customer', subtitle: 'Shop, order, pay, and track delivery');
 

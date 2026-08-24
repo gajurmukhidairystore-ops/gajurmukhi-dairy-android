@@ -279,6 +279,25 @@ class AppDatabase {
   Future<List<Map<String, Object?>>> pendingSync() => db.query('sync_queue', where: 'synced=0', orderBy: 'created_at ASC');
   Future<void> markSynced(String id) async => db.update('sync_queue', {'synced': 1}, where: 'id=?', whereArgs: [id]);
 
+  static const syncableTables = {
+    'customers', 'products', 'invoices', 'invoice_items', 'ledger', 'payments', 'advances', 'expenses',
+    'farmers', 'milk_collections', 'stock_movements', 'returns', 'credit_reminders', 'lucky_draws',
+    'lucky_draw_prizes', 'lucky_draw_tokens', 'lucky_draw_winners', 'tax_groups', 'payment_splits',
+    'quotes', 'quote_items', 'orders',
+  };
+
+  Future<void> applyCloudRecord({required String entity, required String recordId, required String operation, required Map<String, dynamic> payload}) async {
+    if (!syncableTables.contains(entity)) return;
+    if (operation == 'delete') {
+      await delete(entity, recordId);
+      return;
+    }
+    if (operation != 'upsert') return;
+    final row = <String, Object?>{...payload};
+    row['id'] = row['id'] ?? recordId;
+    await db.insert(entity, row, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
   static const snapshotTables = [
     'customers', 'products', 'invoices', 'invoice_items', 'ledger', 'payments', 'advances', 'expenses',
     'farmers', 'milk_collections', 'stock_movements', 'returns', 'credit_reminders', 'lucky_draws',

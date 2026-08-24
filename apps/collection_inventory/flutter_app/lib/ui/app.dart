@@ -6,11 +6,14 @@ import '../app_profile.dart';
 import '../providers/business_provider.dart';
 import '../services/auth_service.dart';
 import '../services/ai_command_service.dart';
+import '../services/mobile_cloud_service.dart';
 import '../services/local_auth_service.dart';
 import '../services/role_permissions.dart';
+import '../services/sync_coordinator.dart';
 import 'screens/ai.dart';
 import 'screens/billing.dart';
 import 'screens/browser.dart';
+import 'screens/cloud_login.dart';
 import 'screens/customers.dart';
 import 'screens/dashboard.dart';
 import 'screens/dairy.dart';
@@ -161,7 +164,15 @@ class _SetupAdminScreenState extends State<SetupAdminScreen> {
           TextField(controller: pin, obscureText: true, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'PIN (minimum 4 digits)')),
         ],
         error: error,
-        action: FilledButton(onPressed: create, child: const Text('Create Admin account')),
+        action: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          FilledButton(onPressed: create, child: const Text('Create offline Admin account')),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CloudLoginScreen(auth: widget.auth, allowRegistration: true, onLoggedIn: widget.onCreated))),
+            icon: const Icon(Icons.cloud_outlined),
+            label: const Text('Create shared cloud Admin account'),
+          ),
+        ]),
       );
 
   @override void dispose() { name.dispose(); username.dispose(); pin.dispose(); super.dispose(); }
@@ -261,6 +272,12 @@ class _RoleLoginScreenState extends State<RoleLoginScreen> {
               const SizedBox(height: 10),
               OutlinedButton.icon(onPressed: busy ? null : loginWithBiometric, icon: const Icon(Icons.fingerprint), label: const Text('Use fingerprint / face login')),
             ],
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: busy ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CloudLoginScreen(auth: widget.auth, onLoggedIn: widget.onLoggedIn))),
+              icon: const Icon(Icons.cloud_sync_outlined),
+              label: const Text('Sign in to shared cloud'),
+            ),
           ],
         ),
       );
@@ -385,6 +402,7 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int index = 0;
+  bool syncing = false;
 
   bool canAccess(int destination) => RolePermissions.canAccess(widget.session.role, destination);
 
@@ -394,6 +412,22 @@ class _MainShellState extends State<MainShell> {
       return;
     }
     setState(() => index = destination);
+  }
+
+  Future<void> syncCloud(BusinessProvider provider) async {
+    if (syncing) return;
+    setState(() => syncing = true);
+    try {
+      final cloud = MobileCloudService();
+      final session = await cloud.savedSession();
+      if (session == null) throw StateError('Sign in to the shared cloud first.');
+      final received = await AuthenticatedSyncCoordinator(db: provider.db, cloud: cloud, session: session).syncNow();
+      await provider.refresh();
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Cloud sync complete. $received shared updates received.')));
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Cloud sync could not complete: $error')));
+    }
+    if (mounted) setState(() => syncing = false);
   }
 
   @override
@@ -421,7 +455,7 @@ class _MainShellState extends State<MainShell> {
       appBar: index == 0 ? null : AppBar(
         title: Text('${AppProfile.current.name} · ${widget.session.role.toUpperCase()}'),
         actions: [
-          IconButton(onPressed: p.refresh, icon: const Icon(Icons.sync)),
+          IconButton(onPressed: syncing ? null : () => syncCloud(p), tooltip: 'Sync shared cloud', icon: syncing ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.cloud_sync)),
               PopupMenuButton<String>(
                 onSelected: (value) { if (value == 'games') navigate(8); if (value == 'music') navigate(9); if (value == 'lucky_draw') navigate(10); if (value == 'orders') navigate(11); if (value == 'browser') navigate(12); if (value == 'logout') Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => LocalAuthGate(db: p.db)), (_) => false); if (value == 'settings') Navigator.of(context).push(MaterialPageRoute(builder: (_) => BiometricSettingsScreen(auth: LocalAuthService(p.db), session: widget.session))); if (value == 'users' && widget.session.role == 'admin') Navigator.of(context).push(MaterialPageRoute(builder: (_) => UsersScreen(p.db))); },
               itemBuilder: (_) => [

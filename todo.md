@@ -154,3 +154,7 @@
 - [ ] Add customer-role account creation and clear first-login instructions to all three Flutter apps.
 - [ ] Combine Admin, Store, Collector, and Customer role experiences into one app and automatically add saved farmer milk collection to dairy inventory and the home summary.
 - [ ] Add a secure in-app AI command assistant using the configured built-in LLM path, with role authorization, confirmation, audit logging, and safe settings/theme changes.
+- [ ] Redesign the Android delivery as one unified role-based app with separate Admin, Store, Collector, and Customer logins using one authenticated shared cloud data layer and offline sync.
+- [ ] Support both the existing Gajurmukhi backend and optional Supabase integration, with one primary data authority and safe secondary backup/mirror behavior.
+- [ ] Implement existing-backend-only shared mobile login and synchronization first; keep Supabase as a later optional mirror.
+- [ ] Implement hybrid username-plus-PIN daily login with optional OTP for new-device verification, recovery, and elevated security.
