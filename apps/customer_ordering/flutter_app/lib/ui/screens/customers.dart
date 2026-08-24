@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../providers/business_provider.dart';
+import '../../services/contact_picker_service.dart';
 import '../../services/location_service.dart';
 import '../../services/whatsapp_service.dart';
 
@@ -122,17 +123,47 @@ class _CustomersScreenState extends State<CustomersScreen> {
   ]);
 
   Future<void> _addCustomer(BuildContext context) async {
+    final pageContext = context;
     final name = TextEditingController();
     final phone = TextEditingController();
     final address = TextEditingController();
     Position? capturedPosition;
     String? locationError;
+    String? contactError;
     bool locating = false;
-    final ok = await showDialog<bool>(context: context, builder: (_) => StatefulBuilder(builder: (dialogContext, setDialogState) => AlertDialog(
+    bool pickingContact = false;
+    final ok = await showDialog<bool>(context: pageContext, builder: (_) => StatefulBuilder(builder: (dialogContext, setDialogState) => AlertDialog(
       title: const Text('Add customer'),
       content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
         TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
-        TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Phone')),
+        Row(children: [
+          Expanded(child: TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Phone'))),
+          const SizedBox(width: 8),
+          IconButton(
+            tooltip: 'Import from phone contacts',
+            onPressed: pickingContact ? null : () async {
+              setDialogState(() { pickingContact = true; contactError = null; });
+              try {
+                final picked = await ContactPickerService().pickPhone();
+                if (picked == null) {
+                  if (dialogContext.mounted) setDialogState(() { pickingContact = false; contactError = 'No phone contact was selected or permission was denied.'; });
+                  return;
+                }
+                if (dialogContext.mounted) {
+                  setDialogState(() {
+                    if (name.text.trim().isEmpty) name.text = picked.name;
+                    phone.text = picked.phone;
+                    pickingContact = false;
+                  });
+                }
+              } catch (error) {
+                if (dialogContext.mounted) setDialogState(() { pickingContact = false; contactError = 'Could not read phone contacts: $error'; });
+              }
+            },
+            icon: pickingContact ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.contacts),
+          ),
+        ]),
+        if (contactError != null) Align(alignment: Alignment.centerLeft, child: Text(contactError!, style: const TextStyle(color: Colors.deepOrange, fontSize: 12))),
         TextField(controller: address, maxLines: 2, decoration: const InputDecoration(labelText: 'House address / delivery instructions')),
         const SizedBox(height: 12),
         Align(alignment: Alignment.centerLeft, child: OutlinedButton.icon(
@@ -160,8 +191,8 @@ class _CustomersScreenState extends State<CustomersScreen> {
       try {
         await widget.p.addCustomer(name.text.trim(), phone.text.trim(), address.text.trim(), latitude: capturedPosition?.latitude, longitude: capturedPosition?.longitude, locationAccuracy: capturedPosition?.accuracy);
       } catch (error) {
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save customer: $error')));
+        if (!mounted) return;
+        ScaffoldMessenger.of(pageContext).showSnackBar(SnackBar(content: Text('Could not save customer: $error')));
       }
     }
   }

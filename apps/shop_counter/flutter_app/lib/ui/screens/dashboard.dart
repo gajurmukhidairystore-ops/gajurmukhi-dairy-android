@@ -53,62 +53,65 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void open(int index) => widget.onNavigate?.call(index);
 
   Future<void> showPayDialog() async {
+    final pageContext = context;
+    final messenger = ScaffoldMessenger.maybeOf(pageContext);
     final amountController = TextEditingController();
     String? customerId;
     var saving = false;
-    await showDialog<void>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Record payment'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<String>(
-                initialValue: customerId,
-                hint: const Text('Select customer'),
-                items: p.customers
-                    .map((customer) => DropdownMenuItem<String>(
-                          value: customer['id']?.toString(),
-                          child: Text('${customer['name']}'),
-                        ))
-                    .toList(),
-                onChanged: (value) => setDialogState(() => customerId = value),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: amountController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'Amount (NPR)'),
+    try {
+      await showDialog<void>(
+        context: pageContext,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, setDialogState) => AlertDialog(
+            title: const Text('Record payment'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  initialValue: customerId,
+                  hint: const Text('Select customer'),
+                  items: p.customers
+                      .map((customer) => DropdownMenuItem<String>(
+                            value: customer['id']?.toString(),
+                            child: Text('${customer['name']}'),
+                          ))
+                      .toList(),
+                  onChanged: (value) => setDialogState(() => customerId = value),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: amountController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(labelText: 'Amount (NPR)'),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Cancel')),
+              FilledButton(
+                onPressed: saving
+                    ? null
+                    : () async {
+                        final value = double.tryParse(amountController.text.trim()) ?? 0;
+                        if (!canSubmitPayment(customerId: customerId, amountText: amountController.text, saving: saving)) return;
+                        setDialogState(() => saving = true);
+                        try {
+                          await p.recordPayment(customerId, value, 'CASH', 'Payment from Milk Khata home');
+                          if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+                        } catch (error) {
+                          if (dialogContext.mounted) setDialogState(() => saving = false);
+                          messenger?.showSnackBar(SnackBar(content: Text('Could not save payment: $error')));
+                        }
+                      },
+                child: Text(saving ? 'Saving…' : 'Save payment'),
               ),
             ],
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            FilledButton(
-              onPressed: !canSubmitPayment(customerId: customerId, amountText: amountController.text, saving: saving)
-                  ? null
-                  : () async {
-                      final value = double.tryParse(amountController.text) ?? 0;
-                      if (!canSubmitPayment(customerId: customerId, amountText: amountController.text, saving: saving)) return;
-                      setDialogState(() => saving = true);
-                      try {
-                        await p.recordPayment(customerId, value, 'CASH', 'Payment from Milk Khata home');
-                        if (context.mounted) Navigator.pop(context);
-                      } catch (error) {
-                        if (context.mounted) {
-                          setDialogState(() => saving = false);
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save payment: $error')));
-                        }
-                      }
-                    },
-              child: Text(saving ? 'Saving…' : 'Save payment'),
-            ),
-          ],
         ),
-      ),
-    );
-    amountController.dispose();
+      );
+    } finally {
+      amountController.dispose();
+    }
   }
 
   @override

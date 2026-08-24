@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../providers/business_provider.dart';
+import '../../services/contact_picker_service.dart';
+import '../../services/whatsapp_service.dart';
 import '../../services/location_service.dart';
 import '../../services/role_permissions.dart';
 
@@ -56,6 +58,74 @@ class _DairyScreenState extends State<DairyScreen> {
     if (!mounted) return;
     if (!started) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Set shop location and allow foreground GPS permission first'))); return; }
     setState(() { tracking = true; distance = null; });
+  }
+
+  Future<void> _addFarmer() async {
+    final name = TextEditingController();
+    final phone = TextEditingController();
+    final address = TextEditingController();
+    String? contactError;
+    bool pickingContact = false;
+    final pageContext = context;
+    final ok = await showDialog<bool>(context: pageContext, builder: (dialogContext) => StatefulBuilder(builder: (dialogContext, setDialogState) => AlertDialog(
+      title: const Text('Add farmer'),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextField(controller: name, decoration: const InputDecoration(labelText: 'Farmer name')),
+        Row(children: [
+          Expanded(child: TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Phone / WhatsApp'))),
+          IconButton(
+            tooltip: 'Import from phone contacts',
+            onPressed: pickingContact ? null : () async {
+              setDialogState(() { pickingContact = true; contactError = null; });
+              try {
+                final picked = await ContactPickerService().pickPhone();
+                if (dialogContext.mounted) {
+                  if (picked == null) {
+                    setDialogState(() { pickingContact = false; contactError = 'No phone contact selected or permission denied.'; });
+                  } else {
+                    setDialogState(() { if (name.text.trim().isEmpty) name.text = picked.name; phone.text = picked.phone; pickingContact = false; });
+                  }
+                }
+              } catch (error) {
+                if (dialogContext.mounted) setDialogState(() { pickingContact = false; contactError = 'Could not read contacts: $error'; });
+              }
+            },
+            icon: pickingContact ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.contacts),
+          ),
+        ]),
+        if (contactError != null) Align(alignment: Alignment.centerLeft, child: Text(contactError!, style: const TextStyle(color: Colors.deepOrange, fontSize: 12))),
+        TextField(controller: address, decoration: const InputDecoration(labelText: 'Address')),
+      ]),
+      actions: [TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: const Text('Save'))],
+    )));
+    try {
+      if (ok == true && name.text.trim().isNotEmpty) {
+        await widget.p.addFarmer(name.text.trim(), phone.text.trim(), address.text.trim(), 65);
+        if (mounted) setState(() {});
+      }
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(pageContext).showSnackBar(SnackBar(content: Text('Could not save farmer: $error')));
+    } finally {
+      name.dispose(); phone.dispose(); address.dispose();
+    }
+  }
+
+  Future<void> _shareFarmerSettlement(Map<String, Object?> farmer) async {
+    final id = '${farmer['id']}';
+    final rows = widget.p.milk.where((entry) => '${entry['farmer_id']}' == id).toList();
+    final litresTotal = rows.fold<double>(0, (sum, entry) => sum + ((entry['litres'] as num?)?.toDouble() ?? 0));
+    final amountTotal = rows.fold<double>(0, (sum, entry) => sum + ((entry['amount'] as num?)?.toDouble() ?? 0));
+    final phone = '${farmer['phone'] ?? ''}'.trim();
+    if (phone.isEmpty) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Add a farmer phone number before sharing WhatsApp settlement')));
+      return;
+    }
+    final message = '*GAJURMUKHI DAIRY & STORE*\nFarmer collection settlement\nDate: ${DateTime.now().toLocal()}\nFarmer: ${farmer['name']}\nMilk collected: ${litresTotal.toStringAsFixed(2)} L\nAmount payable: NPR ${amountTotal.toStringAsFixed(2)}\nValue for Life';
+    try {
+      await WhatsAppService().openMessage(phone, message);
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open WhatsApp: $error')));
+    }
   }
 
   Future<void> saveCollection() async {
@@ -116,6 +186,10 @@ class _DairyScreenState extends State<DairyScreen> {
         const SizedBox(height: 4),
         const Text('Location is used only while this foreground check-in is active.', style: TextStyle(fontSize: 11, color: Colors.black54)),
       ]))),
+      Row(children: [
+        const Expanded(child: Text('Farmer / supplier', style: TextStyle(fontWeight: FontWeight.bold))),
+        TextButton.icon(onPressed: _addFarmer, icon: const Icon(Icons.person_add_alt_1), label: const Text('Add farmer')),
+      ]),
       DropdownButtonFormField<String>(
         initialValue: farmerId,
         items: widget.p.farmers.map((f) => DropdownMenuItem(
@@ -156,6 +230,13 @@ class _DairyScreenState extends State<DairyScreen> {
       ),
       const Divider(height: 30),
       const Text('Today’s Collection', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+      ...widget.p.farmers.map((farmer) => ListTile(
+        leading: const Icon(Icons.agriculture_outlined),
+        title: Text('${farmer['name']}'),
+        subtitle: Text('${farmer['phone'] ?? 'No phone'} · Farmer account'),
+        trailing: IconButton(tooltip: 'Share farmer settlement on WhatsApp', icon: const Icon(Icons.chat_outlined), onPressed: () => _shareFarmerSettlement(farmer)),
+      )),
+      const Divider(),
       ...widget.p.milk.map((m) => ListTile(
         title: Text('${m['litres']} L • FAT ${m['fat']} • SNF ${m['snf']}'),
         subtitle: Text('${m['shift']} • Rate NPR ${m['rate']}'),

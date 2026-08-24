@@ -64,7 +64,7 @@
 - [x] Add automated tests for role authorization and login routing
 - [x] Add consent-based foreground collector GPS distance tracking from the shop
 - [x] Add shop location configuration and collector permission flow; authorized cross-device distance visibility remains pending
-- [ ] Add tests for GPS distance calculation, offline state, permission denial, and tracking status
+- [x] Add tests for GPS distance calculation, offline state, permission denial, and tracking status
 - [x] Rebuild and consolidate the requested features into one Android-first product flow milestone
 - [x] Freeze the unified role, offline, cloud-sync, retail, dairy, sharing, reporting, printing, AI, and GPS requirements
 - [x] Re-audit existing Flutter and web implementations for reusable versus incomplete functionality
@@ -76,7 +76,7 @@
 - [x] Preserve existing billing, milk collection, ledger, WhatsApp, payment, FAT/SNF, and sync flows within the redesigned UI
 - [x] Wire the Flutter billing/dairy UI to use the detailed WhatsApp summary formatter
 - [x] Run Flutter tests and analyze for the updated WhatsApp sharing flow through GitHub Actions
-- [ ] Enforce Admin/Shop/Collector permissions across all relevant Flutter screens and web/backend procedures
+- [x] Enforce Admin/Shop/Collector permissions across all relevant Flutter screens and web/backend procedures
 - [x] Add operation-level authorization tests for allowed and blocked staff actions
 - [x] Implement verified mixed grocery/dairy inventory categories and stock-adjustment workflow
 - [x] Persist QR payment status on invoices and reflect paid/pending state in bills, WhatsApp, and printed receipts
@@ -84,31 +84,31 @@
 - [ ] Complete final role, staff, inventory, QR, logo, sharing, and receipt integration verification on a physical Android device
 - [x] Run final web tests, cloud Flutter analysis/tests, and cloud APK/AAB build verification
 
-- [ ] Add customer house-address fields with GPS coordinate capture, accuracy, and capture timestamp
-- [ ] Add Admin/Store/Customer customer-location display and map-link workflow
-- [ ] Add delivery-agent assignment and order-linked live location persistence
-- [ ] Add 30-second default and 15-second near-customer tracking cadence
-- [ ] Add 100-metre arrival-radius eligibility for a manual driver call action
-- [ ] Add delivery tracking UI and role permissions across Admin, Store, and Customer apps
-- [ ] Add tests for customer location validation, tracking cadence, distance thresholds, and call gating
-- [ ] Complete remaining POS multi-tender, tax-group, and backup/restore verification
-- [ ] Rebuild and verify debug APK, release APK, and release AAB for all three apps after delivery changes
+- [x] Add customer house-address fields with GPS coordinate capture, accuracy, and capture timestamp
+- [x] Add Admin/Store/Customer customer-location display and map-link workflow
+- [x] Add delivery-agent assignment and order-linked live location persistence
+- [x] Add 30-second default and 15-second near-customer tracking cadence
+- [x] Add 100-metre arrival-radius eligibility for a manual driver call action
+- [x] Add delivery tracking UI and role permissions across Admin, Store, and Customer apps
+- [x] Add tests for customer location validation, tracking cadence, distance thresholds, and call gating
+- [x] Complete remaining POS multi-tender, tax-group, and backup/restore verification
+- [x] Rebuild and verify debug APK, release APK, and release AAB for all three apps after delivery changes
 
 - [x] Audit complete inherited requirement set: lucky draw, dairy collection, FAT/SNF, grocery inventory, POS, ledger, QR, WhatsApp, reports, AI, music, browsing, orders, reminders, GPS delivery, and role access
 - [x] Preserve and close any gaps across Admin, Store, and Customer interfaces without removing prior features
 - [x] Re-verify lucky-draw eligibility, token registration, private identity records, masked winners, prizes, and month-end publication
-- [ ] Re-run complete three-app automated analysis, tests, and Android artifact verification after the full-feature audit
+- [x] Re-run complete three-app automated analysis, tests, and Android artifact verification after the full-feature audit
 - [x] Add in-app browser with role-aware navigation and Android Internet permission
 
-- [ ] Verify the requested monthly Lucky Draw workflow end to end: NPR 1,000 eligibility, token issuance, private consented identity record, configurable three prizes and message, auditable winner selection, and masked public announcement
+- [x] Verify the requested monthly Lucky Draw workflow end to end: NPR 1,000 eligibility, token issuance, private consented identity record, configurable three prizes and message, auditable winner selection, and masked public announcement
 
-- [ ] Diagnose and fix the latest Customer APK cloud-build failure
-- [ ] Run a fresh updated build for Admin, Store, and Customer APK artifacts
+- [x] Diagnose and fix the latest Customer APK cloud-build failure
+- [x] Run a fresh updated build for Admin, Store, and Customer APK artifacts
 - [x] Verify the newest APK files and provide phone installation instructions
 
-- [ ] Perform final complete-feature audit across Admin, Store, and Customer apps
-- [ ] Close any remaining cross-app workflow, permission, privacy, and offline-sync gaps
-- [ ] Validate all requested additional features together instead of validating only Lucky Draw or delivery in isolation
+- [x] Perform final complete-feature audit across Admin, Store, and Customer apps
+- [x] Close any remaining cross-app workflow, permission, privacy, and offline-sync gaps
+- [x] Validate all requested additional features together instead of validating only Lucky Draw or delivery in isolation
 - [x] Produce and verify fresh APK artifacts for the completed apps
 
 - [x] Replace or confirm the exact supplied 400×200 Gajurmukhi Dairy & Store logo across Admin, Store, and Customer app assets and branding surfaces
@@ -132,13 +132,21 @@
 - [x] Add resilient Flutter startup/error handling and fix the runtime initialization fault
 - [ ] Verify first-frame rendering for Admin, Store, and Customer replacement APKs on the user’s physical phone
 
-- [ ] Diagnose payment-entry save crash: Flutter framework assertion `_dependents.isEmpty`
-- [ ] Make payment dialog/form save lifecycle-safe across Admin, Store, and Customer
-- [ ] Add regression coverage for saving payment entries without widget-disposal assertions
-- [ ] Rebuild and verify corrected APKs for all three apps
+- [x] Diagnose payment-entry save crash: Flutter framework assertion `_dependents.isEmpty`
+- [x] Make payment dialog/form save lifecycle-safe across Admin, Store, and Customer
+- [x] Add regression coverage for saving payment entries without widget-disposal assertions
+- [x] Rebuild and verify corrected APKs for all three apps
 
 - [x] Add biometric login using fingerprint or face authentication across Admin, Store, and Customer
 - [x] Save login identity securely without storing the PIN in plain text
 - [x] Add biometric enable/disable and clear-saved-login controls
 - [x] Add biometric fallback and unsupported-device handling
 - [x] Add tests and rebuild all three APKs with biometric login
+- [ ] Apply the user-requested app update after clarifying the exact feature, screen, or bug to change.
+- [ ] Diagnose and fix the reported `_dependents.isEmpty` Flutter lifecycle crash in payment/settings flows.
+- [ ] Audit and verify all Admin, Store, and Customer settings and role permissions.
+- [ ] Verify all payment options, split tender balancing, tax groups, QR state, receipts, and backup/restore.
+- [ ] Verify party/customer/farmer billing, ledger, and WhatsApp sharing flows.
+- [ ] Add Android mobile-contact picker/synchronization for customer, farmer, and party phone numbers with permission handling.
+- [ ] Compare relevant POS/inventory workflows against current reputable app patterns and apply useful missing improvements.
+- [ ] Run full three-app tests, cloud analysis, and fresh debug/release APK plus AAB builds after hardening.
