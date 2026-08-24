@@ -37,7 +37,7 @@ class _UsersScreenState extends State<UsersScreen> {
           const SizedBox(height: 10),
           TextField(controller: pin, obscureText: true, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'PIN (minimum 4 digits)')),
           const SizedBox(height: 10),
-          DropdownButtonFormField<String>(initialValue: role, decoration: const InputDecoration(labelText: 'Role'), items: const [DropdownMenuItem(value: 'shop', child: Text('Shop')), DropdownMenuItem(value: 'collector', child: Text('Collector')), DropdownMenuItem(value: 'admin', child: Text('Admin'))], onChanged: (value) => setDialogState(() => role = value ?? 'shop')),
+          DropdownButtonFormField<String>(initialValue: role, decoration: const InputDecoration(labelText: 'Role'), items: const [DropdownMenuItem(value: 'shop', child: Text('Shop')), DropdownMenuItem(value: 'collector', child: Text('Collector')), DropdownMenuItem(value: 'customer', child: Text('Customer')), DropdownMenuItem(value: 'admin', child: Text('Admin'))], onChanged: (value) => setDialogState(() => role = value ?? 'shop')),
         ]),
         actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Create'))],
       )),

@@ -150,4 +150,5 @@
 - [x] Add Android mobile-contact picker/synchronization for customer, farmer, and party phone numbers with permission handling.
 - [x] Compare relevant POS/inventory workflows against current reputable app patterns and apply useful missing improvements.
 - [x] Run full three-app tests, cloud analysis, and fresh debug/release APK plus AAB builds after hardening.
-- [ ] Build and attach separate Admin, Store, and Customer debug/release APKs and release AABs from the dedicated three-app workflow.
+- [x] Build and attach separate Admin, Store, and Customer debug/release APKs and release AABs from the dedicated three-app workflow.
+- [ ] Add customer-role account creation and clear first-login instructions to all three Flutter apps.
