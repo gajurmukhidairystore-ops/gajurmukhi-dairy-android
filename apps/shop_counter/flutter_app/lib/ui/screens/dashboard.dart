@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../providers/business_provider.dart';
 
+bool canSubmitPayment({required String? customerId, required String amountText, required bool saving}) {
+  final amount = double.tryParse(amountText) ?? 0;
+  return customerId != null && customerId.isNotEmpty && amount > 0 && !saving;
+}
+
 class DashboardScreen extends StatefulWidget {
   final BusinessProvider p;
   final ValueChanged<int>? onNavigate;
@@ -47,10 +52,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void open(int index) => widget.onNavigate?.call(index);
 
-  void showPayDialog() {
+  Future<void> showPayDialog() async {
     final amountController = TextEditingController();
     String? customerId;
-    showDialog<void>(
+    var saving = false;
+    await showDialog<void>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
@@ -80,20 +86,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
             FilledButton(
-              onPressed: customerId == null
+              onPressed: !canSubmitPayment(customerId: customerId, amountText: amountController.text, saving: saving)
                   ? null
                   : () async {
                       final value = double.tryParse(amountController.text) ?? 0;
-                      if (value <= 0) return;
-                      await p.recordPayment(customerId, value, 'CASH', 'Payment from Milk Khata home');
-                      if (context.mounted) Navigator.pop(context);
+                      if (!canSubmitPayment(customerId: customerId, amountText: amountController.text, saving: saving)) return;
+                      setDialogState(() => saving = true);
+                      try {
+                        await p.recordPayment(customerId, value, 'CASH', 'Payment from Milk Khata home');
+                        if (context.mounted) Navigator.pop(context);
+                      } catch (error) {
+                        if (context.mounted) {
+                          setDialogState(() => saving = false);
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save payment: $error')));
+                        }
+                      }
                     },
-              child: const Text('Save payment'),
+              child: Text(saving ? 'Saving…' : 'Save payment'),
             ),
           ],
         ),
       ),
-    ).whenComplete(amountController.dispose);
+    );
+    amountController.dispose();
   }
 
   @override

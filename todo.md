@@ -128,6 +128,17 @@
 - [x] Fix confirmed ClassNotFoundException: align each APK manifest launch activity with the compiled MainActivity package
 - [x] Verify all three replacement APKs contain the declared launch activity before delivery
 
-- [ ] Diagnose white-screen startup after corrected MainActivity packaging
-- [ ] Add resilient Flutter startup/error handling and fix the runtime initialization fault
-- [ ] Verify first-frame rendering for Admin, Store, and Customer replacement APKs
+- [x] Diagnose white-screen startup after corrected MainActivity packaging
+- [x] Add resilient Flutter startup/error handling and fix the runtime initialization fault
+- [ ] Verify first-frame rendering for Admin, Store, and Customer replacement APKs on the user’s physical phone
+
+- [ ] Diagnose payment-entry save crash: Flutter framework assertion `_dependents.isEmpty`
+- [ ] Make payment dialog/form save lifecycle-safe across Admin, Store, and Customer
+- [ ] Add regression coverage for saving payment entries without widget-disposal assertions
+- [ ] Rebuild and verify corrected APKs for all three apps
+
+- [x] Add biometric login using fingerprint or face authentication across Admin, Store, and Customer
+- [x] Save login identity securely without storing the PIN in plain text
+- [x] Add biometric enable/disable and clear-saved-login controls
+- [x] Add biometric fallback and unsupported-device handling
+- [ ] Add tests and rebuild all three APKs with biometric login

@@ -47,10 +47,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void open(int index) => widget.onNavigate?.call(index);
 
-  void showPayDialog() {
+  Future<void> showPayDialog() async {
     final amountController = TextEditingController();
     String? customerId;
-    showDialog<void>(
+    var saving = false;
+    await showDialog<void>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
@@ -80,20 +81,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
             FilledButton(
-              onPressed: customerId == null
+              onPressed: customerId == null || saving
                   ? null
                   : () async {
                       final value = double.tryParse(amountController.text) ?? 0;
                       if (value <= 0) return;
-                      await p.recordPayment(customerId, value, 'CASH', 'Payment from Milk Khata home');
-                      if (context.mounted) Navigator.pop(context);
+                      setDialogState(() => saving = true);
+                      try {
+                        await p.recordPayment(customerId, value, 'CASH', 'Payment from Milk Khata home');
+                        if (context.mounted) Navigator.pop(context);
+                      } catch (error) {
+                        if (context.mounted) {
+                          setDialogState(() => saving = false);
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save payment: $error')));
+                        }
+                      }
                     },
-              child: const Text('Save payment'),
+              child: Text(saving ? 'Saving…' : 'Save payment'),
             ),
           ],
         ),
       ),
-    ).whenComplete(amountController.dispose);
+    );
+    amountController.dispose();
   }
 
   @override
