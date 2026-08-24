@@ -129,16 +129,41 @@ class BusinessProvider extends ChangeNotifier {
     if (rate <= 0) throw ArgumentError('Rate per litre must be greater than zero');
     final now = DateTime.now();
     final id = uuid.v4();
+    final movementId = uuid.v4();
     final row = {'id': id, 'farmer_id': farmerId, 'collection_date': now.toIso8601String().substring(0,10), 'shift': shift, 'litres': litres, 'fat': fat, 'snf': snf, 'rate': rate, 'amount': litres * rate, 'created_at': now.toIso8601String()};
-    await db.insert('milk_collections', row);
+    var milkProductRows = await db.query('products', where: 'active=1 AND name=?', args: ['Milk 1 Ltr']);
+    final createdProduct = milkProductRows.isEmpty;
+    final productId = createdProduct ? uuid.v4() : '${milkProductRows.first['id']}';
+    final product = createdProduct
+        ? <String, Object?>{'id': productId, 'name': 'Milk 1 Ltr', 'category': 'Dairy', 'unit': 'Litre', 'sale_price': rate, 'purchase_price': rate, 'stock': 0, 'low_stock': 5, 'barcode': '', 'active': 1}
+        : milkProductRows.first;
+    final movement = {'id': movementId, 'product_id': productId, 'type': 'MILK_COLLECTION_IN', 'qty': litres, 'unit_cost': rate, 'reference_id': id, 'note': 'Farmer milk collection', 'created_at': now.toIso8601String()};
+    await db.db.transaction((txn) async {
+      if (createdProduct) await txn.insert('products', product);
+      await txn.insert('milk_collections', row);
+      await txn.rawUpdate('UPDATE products SET stock=stock+? WHERE id=?', [litres, productId]);
+      await txn.insert('stock_movements', movement);
+    });
+    if (createdProduct) await db.enqueueSync(entity: 'products', entityId: productId, operation: 'upsert', payload: product);
     await db.enqueueSync(entity: 'milk_collections', entityId: id, operation: 'upsert', payload: row);
+    await db.enqueueSync(entity: 'stock_movements', entityId: movementId, operation: 'upsert', payload: movement);
     await refresh();
   }
 
   Future<void> removeMilkCollection(String id) async {
     if (id.trim().isEmpty) throw ArgumentError('Collection id is required');
-    final removed = await db.delete('milk_collections', id);
-    if (removed == 0) throw StateError('Collection record was not found');
+    final rows = await db.query('stock_movements', where: 'reference_id=? AND type=?', args: [id, 'MILK_COLLECTION_IN']);
+    final collection = await db.query('milk_collections', where: 'id=?', args: [id]);
+    if (collection.isEmpty) throw StateError('Collection record was not found');
+    final movement = rows.isEmpty ? null : rows.first;
+    await db.db.transaction((txn) async {
+      if (movement != null) {
+        final qty = (movement['qty'] as num?)?.toDouble() ?? 0;
+        await txn.rawUpdate('UPDATE products SET stock=MAX(0, stock-?) WHERE id=?', [qty, movement['product_id']]);
+        await txn.insert('stock_movements', {'id': uuid.v4(), 'product_id': movement['product_id'], 'type': 'MILK_COLLECTION_REVERSAL', 'qty': -qty, 'unit_cost': movement['unit_cost'] ?? 0, 'reference_id': id, 'note': 'Removed farmer milk collection', 'created_at': DateTime.now().toIso8601String()});
+      }
+      await txn.delete('milk_collections', where: 'id=?', whereArgs: [id]);
+    });
     await db.enqueueSync(entity: 'milk_collections', entityId: id, operation: 'delete', payload: {'id': id});
     await refresh();
   }

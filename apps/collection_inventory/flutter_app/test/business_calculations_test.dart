@@ -18,6 +18,12 @@ void main() {
     expect(BusinessCalculations.stockAfterSale(stock: 2, quantity: 5), 0);
   });
 
+  test('farmer milk collections add dairy inventory and removals reverse safely', () {
+    expect(BusinessCalculations.stockAfterMilkCollection(stock: 10, litres: 25.5), 35.5);
+    expect(BusinessCalculations.stockAfterMilkCollectionRemoval(stock: 35.5, litres: 25.5), 10);
+    expect(BusinessCalculations.stockAfterMilkCollectionRemoval(stock: 3, litres: 9), 0);
+  });
+
   test('returns adjust stock according to sales or purchase direction', () {
     expect(BusinessCalculations.stockAfterReturn(stock: 5, quantity: 2, type: 'SALE_RETURN'), 7);
     expect(BusinessCalculations.stockAfterReturn(stock: 5, quantity: 2, type: 'PURCHASE_RETURN'), 3);

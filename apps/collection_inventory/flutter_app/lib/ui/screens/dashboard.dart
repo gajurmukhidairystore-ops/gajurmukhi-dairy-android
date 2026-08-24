@@ -25,6 +25,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   num get amount => p.totals['sales'] ?? 0;
   num get received => p.totals['collection'] ?? 0;
   num get due => p.totals['due'] ?? 0;
+  num get milkInventory => p.products.where((product) => '${product['name'] ?? ''}'.toLowerCase() == 'milk 1 ltr').fold<num>(0, (sum, product) => sum + ((product['stock'] as num?) ?? 0));
 
   @override
   void dispose() {
@@ -189,6 +190,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       const SizedBox(height: 6),
                       _SummaryCard(milk: milk, amount: amount, due: due, received: received),
+                      const SizedBox(height: 10),
+                      Card(
+                        elevation: 0,
+                        color: const Color(0xffeaf7f0),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                        child: ListTile(
+                          leading: const CircleAvatar(backgroundColor: Colors.white, child: Icon(Icons.local_drink_outlined, color: Color(0xff268b58))),
+                          title: const Text('Dairy inventory', style: TextStyle(fontWeight: FontWeight.w700)),
+                          subtitle: const Text('Milk received from farmer collections'),
+                          trailing: Text('${milkInventory.toStringAsFixed(1)} L', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: Color(0xff268b58))),
+                          onTap: () => open(3),
+                        ),
+                      ),
                       const SizedBox(height: 12),
                       Row(
                         children: [

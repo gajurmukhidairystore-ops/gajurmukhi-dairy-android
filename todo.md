@@ -152,3 +152,4 @@
 - [x] Run full three-app tests, cloud analysis, and fresh debug/release APK plus AAB builds after hardening.
 - [x] Build and attach separate Admin, Store, and Customer debug/release APKs and release AABs from the dedicated three-app workflow.
 - [ ] Add customer-role account creation and clear first-login instructions to all three Flutter apps.
+- [ ] Combine Admin, Store, Collector, and Customer role experiences into one app and automatically add saved farmer milk collection to dairy inventory and the home summary.
