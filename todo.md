@@ -142,11 +142,12 @@
 - [x] Add biometric enable/disable and clear-saved-login controls
 - [x] Add biometric fallback and unsupported-device handling
 - [x] Add tests and rebuild all three APKs with biometric login
-- [ ] Apply the user-requested app update after clarifying the exact feature, screen, or bug to change.
-- [ ] Diagnose and fix the reported `_dependents.isEmpty` Flutter lifecycle crash in payment/settings flows.
-- [ ] Audit and verify all Admin, Store, and Customer settings and role permissions.
-- [ ] Verify all payment options, split tender balancing, tax groups, QR state, receipts, and backup/restore.
-- [ ] Verify party/customer/farmer billing, ledger, and WhatsApp sharing flows.
-- [ ] Add Android mobile-contact picker/synchronization for customer, farmer, and party phone numbers with permission handling.
-- [ ] Compare relevant POS/inventory workflows against current reputable app patterns and apply useful missing improvements.
-- [ ] Run full three-app tests, cloud analysis, and fresh debug/release APK plus AAB builds after hardening.
+- [x] Apply the user-requested app update after clarifying the exact feature, screen, or bug to change.
+- [x] Diagnose and fix the reported `_dependents.isEmpty` Flutter lifecycle crash in payment/settings flows.
+- [x] Audit and verify all Admin, Store, and Customer settings and role permissions.
+- [x] Verify all payment options, split tender balancing, tax groups, QR state, receipts, and backup/restore.
+- [x] Verify party/customer/farmer billing, ledger, and WhatsApp sharing flows.
+- [x] Add Android mobile-contact picker/synchronization for customer, farmer, and party phone numbers with permission handling.
+- [x] Compare relevant POS/inventory workflows against current reputable app patterns and apply useful missing improvements.
+- [x] Run full three-app tests, cloud analysis, and fresh debug/release APK plus AAB builds after hardening.
+- [ ] Build and attach separate Admin, Store, and Customer debug/release APKs and release AABs from the dedicated three-app workflow.
