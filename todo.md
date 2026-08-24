@@ -125,5 +125,9 @@
 - [x] Resolve Android security-reinforcement incompatibility reported by the user’s phone for the installed APKs
 - [x] Rebuild and verify replacement APKs against the phone-compatible Android target and manifest configuration
 
-- [ ] Fix confirmed ClassNotFoundException: align each APK manifest launch activity with the compiled MainActivity package
-- [ ] Verify all three replacement APKs contain the declared launch activity before delivery
+- [x] Fix confirmed ClassNotFoundException: align each APK manifest launch activity with the compiled MainActivity package
+- [x] Verify all three replacement APKs contain the declared launch activity before delivery
+
+- [ ] Diagnose white-screen startup after corrected MainActivity packaging
+- [ ] Add resilient Flutter startup/error handling and fix the runtime initialization fault
+- [ ] Verify first-frame rendering for Admin, Store, and Customer replacement APKs
