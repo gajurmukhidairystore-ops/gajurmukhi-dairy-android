@@ -20,7 +20,7 @@ class ContactPickerService {
     final phone = contact.phones.first.number.trim();
     if (phone.isEmpty) return null;
     return PickedPhoneContact(
-      name: contact.displayName.trim(),
+      name: contact.displayName?.trim() ?? '',
       phone: phone,
     );
   }
