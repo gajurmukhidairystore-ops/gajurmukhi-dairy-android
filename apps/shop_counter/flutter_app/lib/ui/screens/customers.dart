@@ -191,7 +191,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
       try {
         await widget.p.addCustomer(name.text.trim(), phone.text.trim(), address.text.trim(), latitude: capturedPosition?.latitude, longitude: capturedPosition?.longitude, locationAccuracy: capturedPosition?.accuracy);
       } catch (error) {
-        if (!mounted) return;
+        if (!pageContext.mounted) return;
         ScaffoldMessenger.of(pageContext).showSnackBar(SnackBar(content: Text('Could not save customer: $error')));
       }
     }

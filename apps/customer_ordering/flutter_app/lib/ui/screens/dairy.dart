@@ -104,7 +104,7 @@ class _DairyScreenState extends State<DairyScreen> {
         if (mounted) setState(() {});
       }
     } catch (error) {
-      if (mounted) ScaffoldMessenger.of(pageContext).showSnackBar(SnackBar(content: Text('Could not save farmer: $error')));
+      if (pageContext.mounted) ScaffoldMessenger.of(pageContext).showSnackBar(SnackBar(content: Text('Could not save farmer: $error')));
     } finally {
       name.dispose(); phone.dispose(); address.dispose();
     }
