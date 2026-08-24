@@ -141,4 +141,4 @@
 - [x] Save login identity securely without storing the PIN in plain text
 - [x] Add biometric enable/disable and clear-saved-login controls
 - [x] Add biometric fallback and unsupported-device handling
-- [ ] Add tests and rebuild all three APKs with biometric login
+- [x] Add tests and rebuild all three APKs with biometric login
