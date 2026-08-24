@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 
 import 'app_profile.dart';
+import 'services/ai_command_service.dart';
 import 'data/database.dart';
 import 'providers/business_provider.dart';
 import 'ui/app.dart';
@@ -13,7 +14,7 @@ const supabasePublishableKey = String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY'
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  AppProfile.current = AppProfile.customer;
+  AppProfile.current = AppProfile.store;
   runApp(const _BootstrapApp());
 }
 
@@ -34,6 +35,7 @@ Future<_BootstrapResult> _bootstrap() async {
     } catch (_) {}
   }
 
+  await AppSettingsService.load();
   final db = AppDatabase();
   await db.init();
   return _BootstrapResult(db: db, supabaseEnabled: supabaseEnabled);
@@ -90,7 +92,7 @@ class _StartupFailure extends StatelessWidget {
                 children: [
                   const Icon(Icons.error_outline, size: 56, color: Colors.red),
                   const SizedBox(height: 16),
-                  const Text('Gajurmukhi Customer could not start', textAlign: TextAlign.center, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  const Text('Gajurmukhi Store could not start', textAlign: TextAlign.center, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
                   const Text('Please close and reopen the app. If this continues, send this diagnostic message to support.', textAlign: TextAlign.center),
                   const SizedBox(height: 14),

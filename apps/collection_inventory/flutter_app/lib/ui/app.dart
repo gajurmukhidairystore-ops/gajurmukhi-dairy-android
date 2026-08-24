@@ -5,6 +5,7 @@ import '../data/database.dart';
 import '../app_profile.dart';
 import '../providers/business_provider.dart';
 import '../services/auth_service.dart';
+import '../services/ai_command_service.dart';
 import '../services/local_auth_service.dart';
 import '../services/role_permissions.dart';
 import 'screens/ai.dart';
@@ -27,16 +28,26 @@ class GajurmukhiApp extends StatelessWidget {
   const GajurmukhiApp({super.key, this.supabaseEnabled = false});
 
   @override
-  Widget build(BuildContext context) => MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: AppProfile.current.name,
-        theme: ThemeData(
-          useMaterial3: true,
-          colorSchemeSeed: const Color(0xff1976e8),
-          brightness: Brightness.light,
-          inputDecorationTheme: const InputDecorationTheme(border: OutlineInputBorder()),
+  Widget build(BuildContext context) => ValueListenableBuilder<ThemeMode>(
+        valueListenable: AppSettingsService.themeMode,
+        builder: (context, mode, _) => MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: AppProfile.current.name,
+          themeMode: mode,
+          theme: ThemeData(
+            useMaterial3: true,
+            colorSchemeSeed: const Color(0xff1976e8),
+            brightness: Brightness.light,
+            inputDecorationTheme: const InputDecorationTheme(border: OutlineInputBorder()),
+          ),
+          darkTheme: ThemeData(
+            useMaterial3: true,
+            colorSchemeSeed: const Color(0xff1976e8),
+            brightness: Brightness.dark,
+            inputDecorationTheme: const InputDecorationTheme(border: OutlineInputBorder()),
+          ),
+          home: supabaseEnabled ? const AuthScreen() : LocalAuthGate(db: context.read<BusinessProvider>().db),
         ),
-        home: supabaseEnabled ? const AuthScreen() : LocalAuthGate(db: context.read<BusinessProvider>().db),
       );
 }
 

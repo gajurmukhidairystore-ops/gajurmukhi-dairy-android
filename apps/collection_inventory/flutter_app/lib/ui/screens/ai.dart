@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../providers/business_provider.dart';
 import '../../app_profile.dart';
 import '../../services/ai_service.dart';
+import '../../services/ai_command_service.dart';
 
 class AiScreen extends StatefulWidget {
   final BusinessProvider p;
@@ -13,8 +14,12 @@ class AiScreen extends StatefulWidget {
 
 class _AiScreenState extends State<AiScreen> {
   final q = TextEditingController();
+  final command = TextEditingController();
   String answer = 'Ask about sales, stock, customer dues, expenses, milk collection, or product performance.';
+  String commandAnswer = AiCommandService.supportedCommands;
+  AiCommandResult? pendingCommand;
   bool busy = false;
+  bool commandBusy = false;
   static const apiBaseUrl = String.fromEnvironment('API_BASE_URL');
 
   List<String> get prompts {
@@ -22,6 +27,17 @@ class _AiScreenState extends State<AiScreen> {
     if (AppProfile.current.kind == GajurmukhiAppKind.store || widget.role == 'shop') return ['Summarize today’s sales', 'What should I restock?', 'Which bills are unpaid?', 'Show pending orders'];
     if (widget.role == 'collector') return ['How much milk came in?', 'Which collection is missing?', 'Summarize FAT and SNF', 'What should I check next?'];
     return ['Summarize today', 'What should I restock?', 'Who has outstanding dues?', 'How much milk came in?'];
+  }
+
+  Future<void> _runCommand({bool confirmed = false}) async {
+    if (command.text.trim().isEmpty || commandBusy) return;
+    setState(() => commandBusy = true);
+    try {
+      final result = await AiCommandService().execute(command: command.text, role: widget.role, confirmed: confirmed);
+      if (mounted) setState(() { commandAnswer = result.message; pendingCommand = result.requiresConfirmation ? result : null; commandBusy = false; });
+    } catch (error) {
+      if (mounted) setState(() { commandAnswer = 'Command could not be applied: $error'; pendingCommand = null; commandBusy = false; });
+    }
   }
 
   Future<void> _ask() async {
@@ -50,8 +66,32 @@ class _AiScreenState extends State<AiScreen> {
     FilledButton.icon(onPressed: busy ? null : _ask, icon: busy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.auto_awesome), label: Text(busy ? 'Analyzing…' : 'Analyze')),
     const SizedBox(height: 14),
     Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(answer))),
+    const SizedBox(height: 18),
+    Card(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('AI settings commands', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 5),
+          const Text('Commands are limited to approved settings. Sensitive changes require confirmation and Admin permission.'),
+          const SizedBox(height: 10),
+          TextField(controller: command, minLines: 1, maxLines: 3, decoration: const InputDecoration(labelText: 'Type a command', hintText: 'Example: set theme to dark')),
+          const SizedBox(height: 10),
+          Row(children: [
+            Expanded(child: FilledButton.icon(onPressed: commandBusy ? null : () => _runCommand(), icon: commandBusy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.play_arrow), label: Text(commandBusy ? 'Applying…' : 'Run command'))),
+            if (pendingCommand != null) ...[
+              const SizedBox(width: 8),
+              OutlinedButton(onPressed: commandBusy ? null : () => _runCommand(confirmed: true), child: const Text('Confirm')),
+            ],
+          ]),
+          const SizedBox(height: 10),
+          Text(commandAnswer),
+        ]),
+      ),
+    ),
   ]);
 
   @override
-  void dispose() { q.dispose(); super.dispose(); }
+  void dispose() { q.dispose(); command.dispose(); super.dispose(); }
 }
