@@ -5,6 +5,7 @@ import 'package:just_audio_background/just_audio_background.dart';
 
 import 'app_profile.dart';
 import 'services/ai_command_service.dart';
+import 'services/month_end_settlement_reminder_service.dart';
 import 'data/database.dart';
 import 'providers/business_provider.dart';
 import 'ui/app.dart';
@@ -38,6 +39,9 @@ Future<_BootstrapResult> _bootstrap() async {
   await AppSettingsService.load();
   final db = AppDatabase();
   await db.init();
+  try {
+    await MonthEndSettlementReminderService().scheduleNext();
+  } catch (_) {}
   return _BootstrapResult(db: db, supabaseEnabled: supabaseEnabled);
 }
 

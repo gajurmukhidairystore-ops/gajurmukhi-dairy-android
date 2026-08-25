@@ -158,18 +158,18 @@
 - [ ] Support both the existing Gajurmukhi backend and optional Supabase integration, with one primary data authority and safe secondary backup/mirror behavior.
 - [x] Implement existing-backend-only shared mobile login and synchronization first; keep Supabase as a later optional mirror.
 - [ ] Implement hybrid username-plus-PIN daily login with optional OTP for new-device verification, recovery, and elevated security.
-- [ ] Add camera barcode scanning for product lookup and billing in Gajurmukhi One.
+- [x] Add camera barcode scanning for product lookup and billing in Gajurmukhi One.
 - [ ] Place the camera scanner prominently on the billing front counter and add scanned products directly to the current customer bill.
 - [ ] Add local music playback from audio files selected through the phone file picker, including playlist and background playback controls.
-- [ ] Add per-farmer milk-rate settings and per-party fixed pricing controls that apply automatically when the selected record is used.
+- [x] Add per-farmer milk-rate settings and per-party fixed pricing controls that apply automatically when the selected record is used.
 - [ ] Add ordered multi-stop GPS delivery routes with delivered/not-delivered confirmation and reminders for customer goods or milk not handed over.
-- [ ] Verify and harden farmer milk collection posting to sellable dairy inventory and party sales.
-- [ ] Add farmer bill balance, payment settlement, and WhatsApp settlement-sharing workflow.
-- [ ] Add clear inventory create, edit, and archive controls in the unified Gajurmukhi One app.
+- [x] Verify and harden farmer milk collection posting to sellable dairy inventory and party sales.
+- [x] Add farmer bill balance, payment settlement, and WhatsApp settlement-sharing workflow.
+- [x] Add clear inventory create, edit, and archive controls in the unified Gajurmukhi One app.
 - [ ] Present operational dates in Nepali (Bikram Sambat) calendar format across the unified app while preserving ISO timestamps internally.
 - [ ] Add month-end Nepali-calendar settlement reminders for party/customer receivables and farmer payment payables.
 - [ ] Add a configurable Fonpay Smart QR payment option that encodes the exact customer or party bill amount and retains a generic QR fallback until merchant integration details are configured.
-- [ ] Add a configurable business currency setting, defaulting to NPR, for new billing, payment, balance, QR-label, receipt, and WhatsApp-summary displays without converting historic amounts.
-- [ ] Add loan accounts with lender, opening principal, interest rate, interest method, start date, daily repayment entries, today-paid and total-paid views, remaining-principal and accrued-interest calculation, and a loan statement.
-- [ ] Add an Admin-only AI Social Media Studio that can generate branded image-and-caption drafts for Facebook, Instagram, WhatsApp Status, and other selected channels, with review confirmation and native sharing; require a configured server-side image-generation integration for final image output.
-- [ ] Add invoice discount reason and occasion fields, with discount amount plus reason shown consistently in saved bills, printer receipts, WhatsApp summaries, and invoice detail views.
+- [x] Add a configurable business currency setting, defaulting to NPR, for new billing, payment, balance, QR-label, receipt, and WhatsApp-summary displays without converting historic amounts.
+- [x] Add loan accounts with lender, opening principal, interest rate, interest method, start date, daily repayment entries, today-paid and total-paid views, remaining-principal and accrued-interest calculation, and a loan statement.
+- [x] Add an Admin-only AI Social Media Studio that can generate branded image-and-caption drafts for Facebook, Instagram, WhatsApp Status, and other selected channels, with review confirmation and native sharing; require a configured server-side image-generation integration for final image output.
+- [x] Add invoice discount reason and occasion fields, with discount amount plus reason shown consistently in saved bills, printer receipts, WhatsApp summaries, and invoice detail views.

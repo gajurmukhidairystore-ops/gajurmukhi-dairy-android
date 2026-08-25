@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../providers/business_provider.dart';
+import '../../services/nepali_date_service.dart';
 
 bool canSubmitPayment({required String? customerId, required String amountText, required bool saving}) {
   final amount = double.tryParse(amountText) ?? 0;
@@ -33,23 +34,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.dispose();
   }
 
-  String monthLabel(DateTime date) {
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-    return '${months[date.month - 1]} ${date.year}';
-  }
+  String monthLabel(DateTime date) => NepaliDateService.fromAd(date);
 
   void open(int index) => widget.onNavigate?.call(index);
 
