@@ -176,8 +176,8 @@
 - [ ] Fix reported missing barcode Scan-to-bill button and Inventory Add/Edit/Archive controls in the installed Gajurmukhi One APK; reproduce navigation and verify the corrected APK on the phone.
 - [ ] Confirm the delivered APK build contains the unified collection_inventory source and the current barcode/inventory UI, rather than an older cached artifact.
 
-- [ ] Add a prominent front-page Scan item to bill action that opens the camera scanner and carries the scanned product into the billing cart for the selected customer.
-- [ ] Rebuild and verify the APK after the front-page scan-to-bill navigation update.
+- [x] Add a prominent front-page Scan item to bill action that opens the camera scanner and carries the scanned product into the billing cart for the selected customer.
+- [x] Rebuild and verify the APK after the front-page scan-to-bill navigation update.
 - [ ] Update the Store/POS screen with a prominent camera scanner, Add inventory item action, department-store-style item list, and editable purchase/selling price controls.
-- [ ] Ensure front-page Scan item to customer bill opens the camera and preloads the scanned product into the current bill.
-- [ ] Rebuild and verify the corrected APK after the scanner and department-store inventory UI update.
+- [x] Ensure front-page Scan item to customer bill opens the camera and preloads the scanned product into the current bill.
+- [x] Rebuild and verify the corrected APK after the scanner and department-store inventory UI update.
