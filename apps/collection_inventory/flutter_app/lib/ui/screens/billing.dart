@@ -14,7 +14,9 @@ import 'barcode_scanner.dart';
 
 class BillingScreen extends StatefulWidget {
   final BusinessProvider p;
-  const BillingScreen(this.p, {super.key});
+  final String? initialBarcode;
+  final VoidCallback? onInitialBarcodeConsumed;
+  const BillingScreen(this.p, {super.key, this.initialBarcode, this.onInitialBarcodeConsumed});
   @override
   State<BillingScreen> createState() => _BillingScreenState();
 }
@@ -50,6 +52,13 @@ class _BillingScreenState extends State<BillingScreen> {
   void initState() {
     super.initState();
     _loadWhatsAppTemplate();
+    final barcode = widget.initialBarcode?.trim();
+    if (barcode != null && barcode.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await addProductByBarcode(barcode);
+        widget.onInitialBarcodeConsumed?.call();
+      });
+    }
   }
 
   Future<void> _loadWhatsAppTemplate() async {
@@ -134,16 +143,22 @@ class _BillingScreenState extends State<BillingScreen> {
     });
   }
 
-  Future<void> scanAndAddProduct() async {
-    final barcode = await Navigator.of(context).push<String>(MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()));
-    if (!mounted || barcode == null || barcode.isEmpty) return;
-    final product = widget.p.products.where((row) => '${row['barcode'] ?? ''}'.trim() == barcode).toList();
+  Future<void> addProductByBarcode(String barcode) async {
+    final normalized = barcode.trim();
+    if (!mounted || normalized.isEmpty) return;
+    final product = widget.p.products.where((row) => '${row['barcode'] ?? ''}'.trim() == normalized && (row['active'] ?? 1) != 0).toList();
     if (product.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No active inventory item has barcode $barcode. Add or edit the item in Inventory first.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No active inventory item has barcode $normalized. Add or edit the item in Inventory first.')));
       return;
     }
     addProduct(product.first);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${product.first['name']} added to the bill')));
+  }
+
+  Future<void> scanAndAddProduct() async {
+    final barcode = await Navigator.of(context).push<String>(MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()));
+    if (!mounted || barcode == null || barcode.isEmpty) return;
+    await addProductByBarcode(barcode);
   }
 
   Future<Map<String, Object?>?> _collectLuckyDrawDetails() async {

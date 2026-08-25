@@ -11,7 +11,8 @@ bool canSubmitPayment({required String? customerId, required String amountText, 
 class DashboardScreen extends StatefulWidget {
   final BusinessProvider p;
   final ValueChanged<int>? onNavigate;
-  const DashboardScreen(this.p, {super.key, this.onNavigate});
+  final VoidCallback? onScanToBill;
+  const DashboardScreen(this.p, {super.key, this.onNavigate, this.onScanToBill});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -175,6 +176,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       const SizedBox(height: 6),
                       _SummaryCard(milk: milk, amount: amount, due: due, received: received),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: widget.onScanToBill,
+                          icon: const Icon(Icons.qr_code_scanner),
+                          label: const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text('Scan item to customer bill', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
+                        ),
+                      ),
                       const SizedBox(height: 10),
                       Card(
                         elevation: 0,

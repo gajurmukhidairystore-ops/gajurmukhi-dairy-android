@@ -173,3 +173,8 @@
 - [x] Add loan accounts with lender, opening principal, interest rate, interest method, start date, daily repayment entries, today-paid and total-paid views, remaining-principal and accrued-interest calculation, and a loan statement.
 - [x] Add an Admin-only AI Social Media Studio that can generate branded image-and-caption drafts for Facebook, Instagram, WhatsApp Status, and other selected channels, with review confirmation and native sharing; require a configured server-side image-generation integration for final image output.
 - [x] Add invoice discount reason and occasion fields, with discount amount plus reason shown consistently in saved bills, printer receipts, WhatsApp summaries, and invoice detail views.
+- [ ] Fix reported missing barcode Scan-to-bill button and Inventory Add/Edit/Archive controls in the installed Gajurmukhi One APK; reproduce navigation and verify the corrected APK on the phone.
+- [ ] Confirm the delivered APK build contains the unified collection_inventory source and the current barcode/inventory UI, rather than an older cached artifact.
+
+- [ ] Add a prominent front-page Scan item to bill action that opens the camera scanner and carries the scanned product into the billing cart for the selected customer.
+- [ ] Rebuild and verify the APK after the front-page scan-to-bill navigation update.

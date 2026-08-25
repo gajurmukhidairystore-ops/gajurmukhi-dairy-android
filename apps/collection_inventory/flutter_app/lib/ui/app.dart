@@ -12,6 +12,7 @@ import '../services/role_permissions.dart';
 import '../services/sync_coordinator.dart';
 import 'screens/ai.dart';
 import 'screens/billing.dart';
+import 'screens/barcode_scanner.dart';
 import 'screens/browser.dart';
 import 'screens/cloud_login.dart';
 import 'screens/customers.dart';
@@ -421,6 +422,7 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int index = 0;
   bool syncing = false;
+  String? pendingBarcode;
 
   bool canAccess(int destination) => RolePermissions.canAccess(widget.session.role, destination);
 
@@ -430,6 +432,15 @@ class _MainShellState extends State<MainShell> {
       return;
     }
     setState(() => index = destination);
+  }
+
+  Future<void> scanFromDashboard() async {
+    final barcode = await Navigator.of(context).push<String>(MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()));
+    if (!mounted || barcode == null || barcode.trim().isEmpty) return;
+    setState(() {
+      pendingBarcode = barcode.trim();
+      index = 1;
+    });
   }
 
   Future<void> syncCloud(BusinessProvider provider) async {
@@ -452,8 +463,10 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     final p = context.watch<BusinessProvider>();
     final screens = [
-      DashboardScreen(p, onNavigate: navigate),
-      BillingScreen(p),
+      DashboardScreen(p, onNavigate: navigate, onScanToBill: scanFromDashboard),
+      BillingScreen(p, initialBarcode: pendingBarcode, onInitialBarcodeConsumed: () {
+        if (mounted && pendingBarcode != null) setState(() => pendingBarcode = null);
+      }),
       CustomersScreen(p),
       StockScreen(p),
       DairyScreen(p, role: widget.session.role),
