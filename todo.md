@@ -178,3 +178,6 @@
 
 - [ ] Add a prominent front-page Scan item to bill action that opens the camera scanner and carries the scanned product into the billing cart for the selected customer.
 - [ ] Rebuild and verify the APK after the front-page scan-to-bill navigation update.
+- [ ] Update the Store/POS screen with a prominent camera scanner, Add inventory item action, department-store-style item list, and editable purchase/selling price controls.
+- [ ] Ensure front-page Scan item to customer bill opens the camera and preloads the scanned product into the current bill.
+- [ ] Rebuild and verify the corrected APK after the scanner and department-store inventory UI update.
