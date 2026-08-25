@@ -22,6 +22,7 @@ import 'screens/games.dart';
 import 'screens/music.dart';
 import 'screens/orders.dart';
 import 'screens/lucky_draw.dart';
+import 'screens/loans.dart';
 import 'screens/reports.dart';
 import 'screens/stock.dart';
 import 'screens/users.dart';
@@ -170,7 +171,7 @@ class _SetupAdminScreenState extends State<SetupAdminScreen> {
           OutlinedButton.icon(
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CloudLoginScreen(auth: widget.auth, allowRegistration: true, onLoggedIn: widget.onCreated))),
             icon: const Icon(Icons.cloud_outlined),
-            label: const Text('Create shared cloud Admin account'),
+            label: const Text('Use shared cloud account / create first Admin'),
           ),
         ]),
       );
@@ -371,8 +372,25 @@ class _BiometricSettingsScreenState extends State<BiometricSettingsScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Biometric & saved login')),
+        appBar: AppBar(title: const Text('Device & business settings')),
         body: ListView(padding: const EdgeInsets.all(20), children: [
+          Card(child: Padding(padding: const EdgeInsets.all(16), child: ValueListenableBuilder<String>(
+            valueListenable: AppSettingsService.currencyCode,
+            builder: (context, code, _) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              const Text('Business currency', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Text('The selected code is used for new billing, balance, payment, QR-label, receipt, and WhatsApp displays. Amounts are not converted.'),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: code,
+                decoration: const InputDecoration(labelText: 'Currency'),
+                items: AppSettingsService.currencies.entries.map((entry) => DropdownMenuItem(value: entry.key, child: Text(entry.value))).toList(),
+                onChanged: widget.session.role == 'admin' ? (value) { if (value != null) AppSettingsService.setCurrency(value); } : null,
+              ),
+              if (widget.session.role != 'admin') const Padding(padding: EdgeInsets.only(top: 8), child: Text('Only Admin can change this business setting.', style: TextStyle(fontSize: 12))),
+            ]),
+          ))),
+          const SizedBox(height: 12),
           Card(child: ListTile(leading: Icon(available ? Icons.verified_user : Icons.warning_amber_rounded), title: Text(available ? 'Biometrics available' : 'Biometrics unavailable'), subtitle: Text(available ? 'Fingerprint or face authentication is ready on this device.' : 'Enroll a fingerprint or face in Android settings first.'))),
           const SizedBox(height: 12),
           Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -447,6 +465,7 @@ class _MainShellState extends State<MainShell> {
       LuckyDrawScreen(role: widget.session.role),
       OrdersScreen(p, role: widget.session.role, currentUserId: widget.session.username),
       const BrowserScreen(),
+      LoansScreen(p),
     ];
     const navigationTargets = [0, 5, 2, 4, 7];
     final selectedNavigationIndex = navigationTargets.indexOf(index);
@@ -457,15 +476,16 @@ class _MainShellState extends State<MainShell> {
         actions: [
           IconButton(onPressed: syncing ? null : () => syncCloud(p), tooltip: 'Sync shared cloud', icon: syncing ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.cloud_sync)),
               PopupMenuButton<String>(
-                onSelected: (value) { if (value == 'games') navigate(8); if (value == 'music') navigate(9); if (value == 'lucky_draw') navigate(10); if (value == 'orders') navigate(11); if (value == 'browser') navigate(12); if (value == 'logout') Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => LocalAuthGate(db: p.db)), (_) => false); if (value == 'settings') Navigator.of(context).push(MaterialPageRoute(builder: (_) => BiometricSettingsScreen(auth: LocalAuthService(p.db), session: widget.session))); if (value == 'users' && widget.session.role == 'admin') Navigator.of(context).push(MaterialPageRoute(builder: (_) => UsersScreen(p.db))); },
+                onSelected: (value) { if (value == 'games') navigate(8); if (value == 'music') navigate(9); if (value == 'lucky_draw') navigate(10); if (value == 'orders') navigate(11); if (value == 'browser') navigate(12); if (value == 'loans') navigate(13); if (value == 'logout') Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => LocalAuthGate(db: p.db)), (_) => false); if (value == 'settings') Navigator.of(context).push(MaterialPageRoute(builder: (_) => BiometricSettingsScreen(auth: LocalAuthService(p.db), session: widget.session))); if (value == 'users' && widget.session.role == 'admin') Navigator.of(context).push(MaterialPageRoute(builder: (_) => UsersScreen(p.db))); },
               itemBuilder: (_) => [
               const PopupMenuItem(value: 'games', child: Text('Daily progress & rewards')),
               const PopupMenuItem(value: 'music', child: Text('YouTube Music')),
                 if (widget.session.role == 'admin') const PopupMenuItem(value: 'users', child: Text('Users & Roles')),
+                if (widget.session.role == 'admin') const PopupMenuItem(value: 'loans', child: Text('Loan accounts')),
               if (widget.session.role == 'admin' || widget.session.role == 'shop' || widget.session.role == 'customer') const PopupMenuItem(value: 'lucky_draw', child: Text('Monthly Lucky Draw')),
               if (widget.session.role == 'admin' || widget.session.role == 'shop' || widget.session.role == 'customer') const PopupMenuItem(value: 'orders', child: Text('Orders & Reminders')),
               if (widget.session.role == 'admin' || widget.session.role == 'shop' || widget.session.role == 'collector' || widget.session.role == 'customer') const PopupMenuItem(value: 'browser', child: Text('In-app browser')),
-              const PopupMenuItem(value: 'settings', child: Text('Biometric & saved login')),
+              const PopupMenuItem(value: 'settings', child: Text('Device & business settings')),
               const PopupMenuItem(value: 'logout', child: Text('Sign out')),
             ],
           ),

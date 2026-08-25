@@ -103,6 +103,23 @@ class _CustomersScreenState extends State<CustomersScreen> {
     }
   }
 
+  Future<void> _setMilkRate(Map<String, Object?> customer) async {
+    final rate = TextEditingController(text: '${customer['milk_rate'] ?? 0}');
+    final value = await showDialog<double>(context: context, builder: (dialogContext) => AlertDialog(
+      title: Text('Fixed milk rate · ${customer['name']}'),
+      content: TextField(controller: rate, autofocus: true, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'NPR per litre', helperText: 'Use 0 to use normal Milk 1 Ltr price.')),
+      actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(dialogContext, double.tryParse(rate.text.trim())), child: const Text('Save rate'))],
+    ));
+    rate.dispose();
+    if (value == null) return;
+    try {
+      await widget.p.updateCustomerMilkRate('${customer['id']}', value);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Party fixed milk rate saved')));
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save fixed rate: $error')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.all(12), children: [
     Row(children: [const Expanded(child: Text('Customer ledger', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold))), FilledButton.icon(onPressed: () => _addCustomer(context), icon: const Icon(Icons.person_add), label: const Text('Add customer'))]),
@@ -114,10 +131,10 @@ class _CustomersScreenState extends State<CustomersScreen> {
       return Card(child: ListTile(
         leading: CircleAvatar(child: Icon(hasLocation ? Icons.location_on : Icons.person)),
         title: Text('${c['name']}'),
-        subtitle: Text('${c['phone'] ?? ''}\n${address.isEmpty ? 'Address not entered' : address}\nOutstanding: NPR ${c['balance'] ?? 0} · $locationLabel'),
+        subtitle: Text('${c['phone'] ?? ''}\n${address.isEmpty ? 'Address not entered' : address}\nOutstanding: NPR ${c['balance'] ?? 0} · Fixed milk rate: NPR ${c['milk_rate'] ?? 0}/L · $locationLabel'),
         isThreeLine: true,
         onTap: () => _statement(context, c),
-        trailing: PopupMenuButton<String>(onSelected: (v) { if (v == 'payment') _record(context, c, advance: false); if (v == 'advance') _record(context, c, advance: true); if (v == 'statement') _statement(context, c); if (v == 'remind') _remind(context, c); if (v == 'capture') _captureCustomerLocation(c); if (v == 'map') _openMap(c); }, itemBuilder: (_) => const [PopupMenuItem(value: 'payment', child: Text('Record payment')), PopupMenuItem(value: 'advance', child: Text('Record advance')), PopupMenuItem(value: 'statement', child: Text('View statement')), PopupMenuItem(value: 'remind', child: Text('Send credit reminder')), PopupMenuItem(value: 'capture', child: Text('Capture/update GPS location')), PopupMenuItem(value: 'map', child: Text('Open customer on map'))]),
+        trailing: PopupMenuButton<String>(onSelected: (v) { if (v == 'payment') _record(context, c, advance: false); if (v == 'advance') _record(context, c, advance: true); if (v == 'rate') _setMilkRate(c); if (v == 'statement') _statement(context, c); if (v == 'remind') _remind(context, c); if (v == 'capture') _captureCustomerLocation(c); if (v == 'map') _openMap(c); }, itemBuilder: (_) => const [PopupMenuItem(value: 'payment', child: Text('Record payment')), PopupMenuItem(value: 'advance', child: Text('Record advance')), PopupMenuItem(value: 'rate', child: Text('Set fixed milk rate')), PopupMenuItem(value: 'statement', child: Text('View statement')), PopupMenuItem(value: 'remind', child: Text('Send credit reminder')), PopupMenuItem(value: 'capture', child: Text('Capture/update GPS location')), PopupMenuItem(value: 'map', child: Text('Open customer on map'))]),
       ));
     })
   ]);
@@ -127,6 +144,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
     final name = TextEditingController();
     final phone = TextEditingController();
     final address = TextEditingController();
+    final milkRate = TextEditingController(text: '0');
     Position? capturedPosition;
     String? locationError;
     String? contactError;
@@ -165,6 +183,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
         ]),
         if (contactError != null) Align(alignment: Alignment.centerLeft, child: Text(contactError!, style: const TextStyle(color: Colors.deepOrange, fontSize: 12))),
         TextField(controller: address, maxLines: 2, decoration: const InputDecoration(labelText: 'House address / delivery instructions')),
+        TextField(controller: milkRate, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Fixed milk rate (NPR/L, optional)', helperText: 'Use 0 for the normal product price.')),
         const SizedBox(height: 12),
         Align(alignment: Alignment.centerLeft, child: OutlinedButton.icon(
           onPressed: locating ? null : () async {
@@ -189,11 +208,12 @@ class _CustomersScreenState extends State<CustomersScreen> {
     )));
     if (ok == true && name.text.trim().isNotEmpty) {
       try {
-        await widget.p.addCustomer(name.text.trim(), phone.text.trim(), address.text.trim(), latitude: capturedPosition?.latitude, longitude: capturedPosition?.longitude, locationAccuracy: capturedPosition?.accuracy);
+        await widget.p.addCustomer(name.text.trim(), phone.text.trim(), address.text.trim(), milkRate: double.tryParse(milkRate.text.trim()) ?? 0, latitude: capturedPosition?.latitude, longitude: capturedPosition?.longitude, locationAccuracy: capturedPosition?.accuracy);
       } catch (error) {
         if (!pageContext.mounted) return;
         ScaffoldMessenger.of(pageContext).showSnackBar(SnackBar(content: Text('Could not save customer: $error')));
       }
     }
+    name.dispose(); phone.dispose(); address.dispose(); milkRate.dispose();
   }
 }

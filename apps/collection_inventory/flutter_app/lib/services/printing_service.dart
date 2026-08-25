@@ -3,6 +3,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
+import 'ai_command_service.dart';
+
 class PrintingService {
   Future<void> printA4({
     required String invoiceNo,
@@ -31,15 +33,15 @@ class PrintingService {
             pw.TableHelper.fromTextArray(
               headers: ['Item','Qty','Price','Total'],
               data: items.map((i) => [
-                i['name'], '${i['qty']}', 'NPR ${i['price']}', 'NPR ${i['total']}'
+                i['name'], '${i['qty']}', AppSettingsService.money(i['price'] as num), AppSettingsService.money(i['total'] as num)
               ]).toList(),
             ),
             pw.SizedBox(height: 16),
             pw.Align(alignment: pw.Alignment.centerRight,
               child: pw.Column(children: [
-                pw.Text('Total: NPR ${total.toStringAsFixed(2)}'),
-                pw.Text('Paid: NPR ${paid.toStringAsFixed(2)}'),
-                pw.Text('Due: NPR ${due.toStringAsFixed(2)}'),
+                pw.Text('Total: ${AppSettingsService.money(total)}'),
+                pw.Text('Paid: ${AppSettingsService.money(paid)}'),
+                pw.Text('Due: ${AppSettingsService.money(due)}'),
                 if (qrStatus != 'not_applicable') pw.Text('QR payment: ${qrStatus == 'received' ? 'Received' : 'Pending confirmation'}'),
                 if (luckyToken?.trim().isNotEmpty == true) pw.Text('Lucky draw token: ${luckyToken!.trim()}'),
               ])),
@@ -52,7 +54,7 @@ class PrintingService {
 
   Future<Uint8List> a4Bytes(String invoiceNo, double total) async {
     final doc = pw.Document();
-    doc.addPage(pw.Page(build: (_) => pw.Center(child: pw.Text('$invoiceNo • NPR $total'))));
+    doc.addPage(pw.Page(build: (_) => pw.Center(child: pw.Text('$invoiceNo • ${AppSettingsService.money(total)}'))));
     return doc.save();
   }
 }

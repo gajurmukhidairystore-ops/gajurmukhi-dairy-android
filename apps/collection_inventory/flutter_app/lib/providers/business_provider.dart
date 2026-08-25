@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../data/database.dart';
 import '../services/lucky_draw_service.dart';
 import '../services/location_service.dart';
+import '../services/loan_calculator.dart';
 
 class BusinessProvider extends ChangeNotifier {
   final AppDatabase db;
@@ -13,6 +14,8 @@ class BusinessProvider extends ChangeNotifier {
   List<Map<String,Object?>> products = [];
   List<Map<String,Object?>> farmers = [];
   List<Map<String,Object?>> milk = [];
+  List<Map<String,Object?>> farmerPayments = [];
+  List<Map<String,Object?>> loans = [];
   Map<String,num> totals = {};
   List<Map<String,Object?>> luckyDraws = [];
   List<Map<String,Object?>> luckyDrawPrizes = [];
@@ -37,6 +40,8 @@ class BusinessProvider extends ChangeNotifier {
     products = await db.query('products', where: 'active=1');
     farmers = await db.query('farmers', where: 'active=1');
     milk = await db.query('milk_collections', where: "collection_date=date('now','localtime')");
+    farmerPayments = await db.query('farmer_payments', orderBy: 'created_at DESC');
+    loans = await db.query('loans', where: 'active=1', orderBy: 'start_date DESC');
     totals = await db.totals();
     luckyDraws = await db.query('lucky_draws', orderBy: 'created_at DESC');
     luckyDrawPrizes = await db.query('lucky_draw_prizes', orderBy: 'prize_rank ASC');
@@ -54,11 +59,11 @@ class BusinessProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> addCustomer(String name, String phone, String address, {double? latitude, double? longitude, double? locationAccuracy, DateTime? locationCapturedAt}) async {
+  Future<void> addCustomer(String name, String phone, String address, {double milkRate = 0, double? latitude, double? longitude, double? locationAccuracy, DateTime? locationCapturedAt}) async {
     if (name.trim().isEmpty) throw ArgumentError('Customer name is required');
     validateCustomerLocation(latitude: latitude, longitude: longitude);
     final id = uuid.v4();
-    final row = <String, Object?>{'id': id, 'name': name.trim(), 'phone': phone.trim(), 'address': address.trim(), 'latitude': latitude, 'longitude': longitude, 'location_accuracy': locationAccuracy, 'location_captured_at': latitude == null ? null : (locationCapturedAt ?? DateTime.now()).toIso8601String(), 'created_at': DateTime.now().toIso8601String()};
+    final row = <String, Object?>{'id': id, 'name': name.trim(), 'phone': phone.trim(), 'address': address.trim(), 'milk_rate': milkRate < 0 ? 0 : milkRate, 'latitude': latitude, 'longitude': longitude, 'location_accuracy': locationAccuracy, 'location_captured_at': latitude == null ? null : (locationCapturedAt ?? DateTime.now()).toIso8601String(), 'created_at': DateTime.now().toIso8601String()};
     await db.insert('customers', row);
     await db.enqueueSync(entity: 'customers', entityId: id, operation: 'upsert', payload: row);
     await refresh();
@@ -79,6 +84,15 @@ class BusinessProvider extends ChangeNotifier {
     final updated = await db.update('customers', row, customerId);
     if (updated == 0) throw StateError('Customer was not found');
     await db.enqueueSync(entity: 'customers', entityId: customerId, operation: 'upsert', payload: {'id': customerId, ...row});
+    await refresh();
+  }
+
+  Future<void> updateCustomerMilkRate(String customerId, double rate) async {
+    if (rate < 0) throw ArgumentError('Fixed milk rate cannot be negative');
+    final updated = await db.update('customers', {'milk_rate': rate}, customerId);
+    if (updated == 0) throw StateError('Party was not found');
+    final row = (await db.query('customers', where: 'id=?', args: [customerId])).first;
+    await db.enqueueSync(entity: 'customers', entityId: customerId, operation: 'upsert', payload: Map<String, dynamic>.from(row));
     await refresh();
   }
 
@@ -107,11 +121,88 @@ class BusinessProvider extends ChangeNotifier {
     await refresh();
   }
 
+  Future<void> updateProduct(String productId, {required String name, required double salePrice, required String category, required String unit, required String barcode}) async {
+    if (name.trim().isEmpty || salePrice < 0) throw ArgumentError('Enter a product name and a valid sale price');
+    final updated = await db.update('products', {'name': name.trim(), 'sale_price': salePrice, 'category': category, 'unit': unit, 'barcode': barcode.trim()}, productId);
+    if (updated == 0) throw StateError('Inventory item was not found');
+    final row = (await db.query('products', where: 'id=?', args: [productId])).first;
+    await db.enqueueSync(entity: 'products', entityId: productId, operation: 'upsert', payload: Map<String, dynamic>.from(row));
+    await refresh();
+  }
+
+  Future<void> archiveProduct(String productId) async {
+    final updated = await db.update('products', {'active': 0}, productId);
+    if (updated == 0) throw StateError('Inventory item was not found');
+    final row = (await db.query('products', where: 'id=?', args: [productId])).first;
+    await db.enqueueSync(entity: 'products', entityId: productId, operation: 'upsert', payload: Map<String, dynamic>.from(row));
+    await refresh();
+  }
+
   Future<void> addFarmer(String name, String phone, String address, double rate) async {
     final id = uuid.v4();
     final row = {'id': id, 'name': name, 'phone': phone, 'address': address, 'rate_per_litre': rate, 'created_at': DateTime.now().toIso8601String()};
     await db.insert('farmers', row);
     await db.enqueueSync(entity: 'farmers', entityId: id, operation: 'upsert', payload: row);
+    await refresh();
+  }
+
+  Future<void> updateFarmerRate(String farmerId, double rate) async {
+    if (rate <= 0) throw ArgumentError('Farmer rate must be greater than zero');
+    final updated = await db.update('farmers', {'rate_per_litre': rate}, farmerId);
+    if (updated == 0) throw StateError('Farmer was not found');
+    final row = (await db.query('farmers', where: 'id=?', args: [farmerId])).first;
+    await db.enqueueSync(entity: 'farmers', entityId: farmerId, operation: 'upsert', payload: Map<String, dynamic>.from(row));
+    await refresh();
+  }
+
+  Future<double> farmerBalance(String farmerId) async {
+    final collections = await db.query('milk_collections', where: 'farmer_id=?', args: [farmerId]);
+    final payments = await db.query('farmer_payments', where: 'farmer_id=?', args: [farmerId]);
+    final payable = collections.fold<double>(0, (sum, row) => sum + ((row['amount'] as num?)?.toDouble() ?? 0));
+    final paid = payments.fold<double>(0, (sum, row) => sum + ((row['amount'] as num?)?.toDouble() ?? 0));
+    return (payable - paid).clamp(0, double.infinity).toDouble();
+  }
+
+  Future<void> recordFarmerPayment({required String farmerId, required double amount, required String method, String note = ''}) async {
+    if (amount <= 0) throw ArgumentError('Payment amount must be greater than zero');
+    final balance = await farmerBalance(farmerId);
+    if (amount > balance + 0.01) throw ArgumentError('Payment cannot exceed farmer payable balance of NPR ${balance.toStringAsFixed(2)}');
+    final row = <String, Object?>{'id': uuid.v4(), 'farmer_id': farmerId, 'amount': amount, 'method': method, 'note': note, 'created_at': DateTime.now().toIso8601String()};
+    await db.insert('farmer_payments', row);
+    await db.enqueueSync(entity: 'farmer_payments', entityId: '${row['id']}', operation: 'upsert', payload: Map<String, dynamic>.from(row));
+    await refresh();
+  }
+
+  Future<void> addLoan({required String name, required String lender, required double principal, required double annualInterestRate, required DateTime startDate, String note = ''}) async {
+    if (name.trim().isEmpty || lender.trim().isEmpty) throw ArgumentError('Loan name and lender are required');
+    if (principal <= 0) throw ArgumentError('Opening principal must be greater than zero');
+    if (annualInterestRate < 0) throw ArgumentError('Interest rate cannot be negative');
+    final row = <String, Object?>{
+      'id': uuid.v4(), 'name': name.trim(), 'lender': lender.trim(), 'principal': principal,
+      'annual_interest_rate': annualInterestRate, 'interest_method': 'SIMPLE_DAILY_REDUCING',
+      'start_date': startDate.toIso8601String(), 'active': 1, 'note': note.trim(), 'created_at': DateTime.now().toIso8601String(),
+    };
+    await db.insert('loans', row);
+    await db.enqueueSync(entity: 'loans', entityId: '${row['id']}', operation: 'upsert', payload: Map<String, dynamic>.from(row));
+    await refresh();
+  }
+
+  Future<Map<String, dynamic>> loanSnapshot(String loanId, {DateTime? asOf}) async {
+    final rows = await db.query('loans', where: 'id=?', args: [loanId]);
+    if (rows.isEmpty) throw StateError('Loan account was not found');
+    final payments = await db.query('loan_payments', where: 'loan_id=?', args: [loanId], orderBy: 'payment_date ASC');
+    return LoanCalculator.snapshot(loan: rows.first, payments: payments, asOf: asOf);
+  }
+
+  Future<void> recordLoanPayment({required String loanId, required double amount, DateTime? paymentDate, String note = ''}) async {
+    if (amount <= 0) throw ArgumentError('Payment amount must be greater than zero');
+    final effectiveDate = paymentDate ?? DateTime.now();
+    final snapshot = await loanSnapshot(loanId, asOf: effectiveDate);
+    final remaining = (snapshot['remaining_total'] as num).toDouble();
+    if (amount > remaining + 0.01) throw ArgumentError('Payment cannot exceed remaining loan balance of ${remaining.toStringAsFixed(2)}');
+    final row = <String, Object?>{'id': uuid.v4(), 'loan_id': loanId, 'amount': amount, 'payment_date': effectiveDate.toIso8601String(), 'note': note.trim(), 'created_at': DateTime.now().toIso8601String()};
+    await db.insert('loan_payments', row);
+    await db.enqueueSync(entity: 'loan_payments', entityId: '${row['id']}', operation: 'upsert', payload: Map<String, dynamic>.from(row));
     await refresh();
   }
 

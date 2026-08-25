@@ -7,8 +7,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../providers/business_provider.dart';
+import '../../services/ai_command_service.dart';
 import '../../services/printing_service.dart';
 import '../../services/whatsapp_service.dart';
+import 'barcode_scanner.dart';
 
 class BillingScreen extends StatefulWidget {
   final BusinessProvider p;
@@ -75,7 +77,7 @@ class _BillingScreenState extends State<BillingScreen> {
 
   String get qrStatus => hasQrTender ? (paid >= total && total > 0 ? 'received' : 'pending') : 'not_applicable';
 
-  String get paymentQrData => 'upi://pay?pa=${Uri.encodeComponent(upiId.text.trim())}&pn=${Uri.encodeComponent('Gajurmukhi Dairy & Store')}&am=${total.toStringAsFixed(2)}&cu=INR&tn=${Uri.encodeComponent('Gajurmukhi bill')}';
+  String get paymentQrData => 'upi://pay?pa=${Uri.encodeComponent(upiId.text.trim())}&pn=${Uri.encodeComponent('Gajurmukhi Dairy & Store')}&am=${total.toStringAsFixed(2)}&cu=${AppSettingsService.currencyCode.value}&tn=${Uri.encodeComponent('Gajurmukhi bill')}';
 
   Map<String, Object?>? customerById(String? id) {
     for (final customer in widget.p.customers) {
@@ -94,7 +96,9 @@ class _BillingScreenState extends State<BillingScreen> {
   }
 
   void addProduct(Map<String, Object?> product) {
-    final price = (product['sale_price'] as num).toDouble();
+    final partyRate = (customerById(selectedCustomerId)?['milk_rate'] as num?)?.toDouble() ?? 0;
+    final isMilk = '${product['name']}'.trim().toLowerCase() == 'milk 1 ltr';
+    final price = isMilk && partyRate > 0 ? partyRate : (product['sale_price'] as num).toDouble();
     final existing = cart.where((e) => e['productId'] == product['id']).toList();
     if (existing.isNotEmpty) {
       existing.first['qty'] += 1;
@@ -110,6 +114,33 @@ class _BillingScreenState extends State<BillingScreen> {
       });
     }
     setState(() {});
+  }
+
+  void selectCustomer(String? customerId) {
+    setState(() {
+      selectedCustomerId = customerId;
+      customerPhone.text = '${customerById(customerId)?['phone'] ?? ''}';
+      final fixedRate = (customerById(customerId)?['milk_rate'] as num?)?.toDouble() ?? 0;
+      for (final item in cart) {
+        if ('${item['name']}'.trim().toLowerCase() != 'milk 1 ltr') continue;
+        final products = widget.p.products.where((row) => '${row['id']}' == '${item['productId']}').toList();
+        final standardRate = products.isEmpty ? (item['price'] as num).toDouble() : (products.first['sale_price'] as num).toDouble();
+        item['price'] = fixedRate > 0 ? fixedRate : standardRate;
+        item['total'] = (item['qty'] as num).toDouble() * (item['price'] as num).toDouble();
+      }
+    });
+  }
+
+  Future<void> scanAndAddProduct() async {
+    final barcode = await Navigator.of(context).push<String>(MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()));
+    if (!mounted || barcode == null || barcode.isEmpty) return;
+    final product = widget.p.products.where((row) => '${row['barcode'] ?? ''}'.trim() == barcode).toList();
+    if (product.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No active inventory item has barcode $barcode. Add or edit the item in Inventory first.')));
+      return;
+    }
+    addProduct(product.first);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${product.first['name']} added to the bill')));
   }
 
   Future<Map<String, Object?>?> _collectLuckyDrawDetails() async {
@@ -291,7 +322,8 @@ class _BillingScreenState extends State<BillingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final products = widget.p.products;
+    final needle = search.text.trim().toLowerCase();
+    final products = widget.p.products.where((product) => needle.isEmpty || '${product['name']}'.toLowerCase().contains(needle) || '${product['barcode'] ?? ''}'.toLowerCase().contains(needle) || '${product['sku'] ?? ''}'.toLowerCase().contains(needle)).toList();
     return Row(
       children: [
         Expanded(
@@ -299,13 +331,11 @@ class _BillingScreenState extends State<BillingScreen> {
           child: ListView(
             padding: const EdgeInsets.all(12),
             children: [
-              TextField(
-                controller: search,
-                decoration: const InputDecoration(
-                  labelText: 'Search product / barcode',
-                  prefixIcon: Icon(Icons.search),
-                ),
-              ),
+              Row(children: [
+                Expanded(child: TextField(controller: search, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'Search product / barcode', prefixIcon: Icon(Icons.search)))),
+                const SizedBox(width: 8),
+                FilledButton.icon(onPressed: scanAndAddProduct, icon: const Icon(Icons.document_scanner), label: const Text('Scan')),
+              ]),
               const SizedBox(height: 10),
               ...products.map((p) => Card(
                     child: ListTile(
@@ -337,18 +367,18 @@ class _BillingScreenState extends State<BillingScreen> {
                       children: cart
                           .map((i) => ListTile(
                                 title: Text(i['name']),
-                                subtitle: Text('${i['qty']} × NPR ${i['price']}'),
-                                trailing: Text('NPR ${i['total']}'),
+                                subtitle: Text('${i['qty']} × ${AppSettingsService.money(i['price'] as num)}'),
+                                trailing: Text(AppSettingsService.money(i['total'] as num)),
                               ))
                           .toList(),
                     ),
                   ),
-                  Text('Subtotal: NPR ${subtotal.toStringAsFixed(2)}'),
-                  Text('Discount: NPR ${discount.toStringAsFixed(2)}'),
-                  Text('Tax (${taxRate.toStringAsFixed(2)}%): NPR ${tax.toStringAsFixed(2)}'),
-                  Text('Total: NPR ${total.toStringAsFixed(2)}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  Text('Paid: NPR ${paid.toStringAsFixed(2)}'),
-                  Text('Due: NPR ${due.toStringAsFixed(2)}'),
+                  Text('Subtotal: ${AppSettingsService.money(subtotal)}'),
+                  Text('Discount: ${AppSettingsService.money(discount)}'),
+                  Text('Tax (${taxRate.toStringAsFixed(2)}%): ${AppSettingsService.money(tax)}'),
+                  Text('Total: ${AppSettingsService.money(total)}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  Text('Paid: ${AppSettingsService.money(paid)}'),
+                  Text('Due: ${AppSettingsService.money(due)}'),
                   if (lastLuckyToken != null) Text('Lucky draw token: $lastLuckyToken', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple)),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
@@ -385,8 +415,8 @@ class _BillingScreenState extends State<BillingScreen> {
                     decoration: const InputDecoration(labelText: 'Payment'),
                   ),
                   const SizedBox(height: 8),
-                  if (payment == 'SPLIT') OutlinedButton.icon(onPressed: total <= 0 ? null : _manageSplitTenders, icon: const Icon(Icons.call_split), label: Text(paymentTenders.isEmpty ? 'Add split tenders' : 'Edit split tenders · Paid NPR ${paid.toStringAsFixed(2)}'))
-                  else TextField(keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Paid amount (NPR)'), onChanged: (value) => setState(() => paid = double.tryParse(value) ?? 0)),
+                  if (payment == 'SPLIT') OutlinedButton.icon(onPressed: total <= 0 ? null : _manageSplitTenders, icon: const Icon(Icons.call_split), label: Text(paymentTenders.isEmpty ? 'Add split tenders' : 'Edit split tenders · Paid ${AppSettingsService.money(paid)}'))
+                  else TextField(keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: 'Paid amount (${AppSettingsService.currencyCode.value})'), onChanged: (value) => setState(() => paid = double.tryParse(value) ?? 0)),
                   const SizedBox(height: 8),
                   if (hasQrTender) ...[
                     TextField(
@@ -403,7 +433,7 @@ class _BillingScreenState extends State<BillingScreen> {
                             const Text('Customer scans this QR. The invoice amount is already filled in.', textAlign: TextAlign.center),
                             const SizedBox(height: 8),
                             QrImageView(data: paymentQrData, size: 190, backgroundColor: Colors.white),
-                            Text('Exact amount: NPR ${total.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            Text('Exact amount: ${AppSettingsService.money(total)}', style: const TextStyle(fontWeight: FontWeight.bold)),
                             const SizedBox(height: 6),
                             OutlinedButton.icon(onPressed: total <= 0 ? null : () => setState(() => paid = total), icon: const Icon(Icons.verified), label: const Text('Mark QR payment received')),
                           ]),
@@ -419,11 +449,7 @@ class _BillingScreenState extends State<BillingScreen> {
                         .map((customer) => DropdownMenuItem<String>(value: '${customer['id']}', child: Text('${customer['name']}')))
                         .toList(),
                     onChanged: (value) {
-                      final customer = customerById(value);
-                      setState(() {
-                        selectedCustomerId = value;
-                        customerPhone.text = '${customer?['phone'] ?? ''}';
-                      });
+                      selectCustomer(value);
                     },
                   ),
                   const SizedBox(height: 8),

@@ -152,9 +152,22 @@
 - [x] Run full three-app tests, cloud analysis, and fresh debug/release APK plus AAB builds after hardening.
 - [x] Build and attach separate Admin, Store, and Customer debug/release APKs and release AABs from the dedicated three-app workflow.
 - [ ] Add customer-role account creation and clear first-login instructions to all three Flutter apps.
-- [ ] Combine Admin, Store, Collector, and Customer role experiences into one app and automatically add saved farmer milk collection to dairy inventory and the home summary.
+- [x] Combine Admin, Store, Collector, and Customer role experiences into one app and automatically add saved farmer milk collection to dairy inventory and the home summary.
 - [ ] Add a secure in-app AI command assistant using the configured built-in LLM path, with role authorization, confirmation, audit logging, and safe settings/theme changes.
-- [ ] Redesign the Android delivery as one unified role-based app with separate Admin, Store, Collector, and Customer logins using one authenticated shared cloud data layer and offline sync.
+- [x] Redesign the Android delivery as one unified role-based app with separate Admin, Store, Collector, and Customer logins using one authenticated shared cloud data layer and offline sync.
 - [ ] Support both the existing Gajurmukhi backend and optional Supabase integration, with one primary data authority and safe secondary backup/mirror behavior.
-- [ ] Implement existing-backend-only shared mobile login and synchronization first; keep Supabase as a later optional mirror.
+- [x] Implement existing-backend-only shared mobile login and synchronization first; keep Supabase as a later optional mirror.
 - [ ] Implement hybrid username-plus-PIN daily login with optional OTP for new-device verification, recovery, and elevated security.
+- [ ] Add camera barcode scanning for product lookup and billing in Gajurmukhi One.
+- [ ] Place the camera scanner prominently on the billing front counter and add scanned products directly to the current customer bill.
+- [ ] Add local music playback from audio files selected through the phone file picker, including playlist and background playback controls.
+- [ ] Add per-farmer milk-rate settings and per-party fixed pricing controls that apply automatically when the selected record is used.
+- [ ] Add ordered multi-stop GPS delivery routes with delivered/not-delivered confirmation and reminders for customer goods or milk not handed over.
+- [ ] Verify and harden farmer milk collection posting to sellable dairy inventory and party sales.
+- [ ] Add farmer bill balance, payment settlement, and WhatsApp settlement-sharing workflow.
+- [ ] Add clear inventory create, edit, and archive controls in the unified Gajurmukhi One app.
+- [ ] Present operational dates in Nepali (Bikram Sambat) calendar format across the unified app while preserving ISO timestamps internally.
+- [ ] Add month-end Nepali-calendar settlement reminders for party/customer receivables and farmer payment payables.
+- [ ] Add a configurable Fonpay Smart QR payment option that encodes the exact customer or party bill amount and retains a generic QR fallback until merchant integration details are configured.
+- [ ] Add a configurable business currency setting, defaulting to NPR, for new billing, payment, balance, QR-label, receipt, and WhatsApp-summary displays without converting historic amounts.
+- [ ] Add loan accounts with lender, opening principal, interest rate, interest method, start date, daily repayment entries, today-paid and total-paid views, remaining-principal and accrued-interest calculation, and a loan statement.

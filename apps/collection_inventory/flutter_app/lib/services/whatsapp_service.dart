@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'ai_command_service.dart';
+
 class WhatsAppService {
   static const defaultTemplate = '''*GAJURMUKHI DAIRY & STORE*
 _Daily dairy transaction summary_
@@ -88,7 +90,7 @@ Value for Life''';
     String? luckyToken,
     String? template,
   }) {
-    String money(double value) => 'NPR ${value.toStringAsFixed(2)}';
+    String money(double value) => AppSettingsService.money(value);
     String qty(double value) => value == value.roundToDouble() ? value.toInt().toString() : value.toStringAsFixed(2);
     String paymentLabel(String? value) {
       if (value == null || value.trim().isEmpty) return 'Not specified';

@@ -7,7 +7,7 @@ class AppDatabase {
 
   Future<void> init({String? path}) async {
     final p = path ?? join(await getDatabasesPath(), 'gajurmukhi_pro.db');
-    db = await openDatabase(p, version: 12, onCreate: _create, onUpgrade: _upgrade);
+    db = await openDatabase(p, version: 14, onCreate: _create, onUpgrade: _upgrade);
   }
 
   Future<void> _create(Database db, int version) async {
@@ -15,7 +15,7 @@ class AppDatabase {
       CREATE TABLE customers(
         id TEXT PRIMARY KEY, name TEXT NOT NULL, phone TEXT, address TEXT,
         latitude REAL, longitude REAL, location_accuracy REAL, location_captured_at TEXT,
-        credit_limit REAL DEFAULT 0, balance REAL DEFAULT 0,
+        credit_limit REAL DEFAULT 0, balance REAL DEFAULT 0, milk_rate REAL DEFAULT 0,
         active INTEGER DEFAULT 1, created_at TEXT NOT NULL
       )
     ''');
@@ -72,10 +72,31 @@ class AppDatabase {
       )
     ''');
     await db.execute('''
-      CREATE TABLE milk_collections(
+CREATE TABLE milk_collections(
         id TEXT PRIMARY KEY, farmer_id TEXT NOT NULL, collection_date TEXT NOT NULL,
         shift TEXT NOT NULL, litres REAL NOT NULL, fat REAL, snf REAL,
         rate REAL NOT NULL, amount REAL NOT NULL, note TEXT, created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE farmer_payments(
+        id TEXT PRIMARY KEY, farmer_id TEXT NOT NULL, amount REAL NOT NULL,
+        method TEXT NOT NULL, note TEXT, created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE loans(
+        id TEXT PRIMARY KEY, name TEXT NOT NULL, lender TEXT NOT NULL,
+        principal REAL NOT NULL, annual_interest_rate REAL NOT NULL DEFAULT 0,
+        interest_method TEXT NOT NULL DEFAULT 'SIMPLE_DAILY_REDUCING',
+        start_date TEXT NOT NULL, active INTEGER DEFAULT 1, note TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE loan_payments(
+        id TEXT PRIMARY KEY, loan_id TEXT NOT NULL, amount REAL NOT NULL,
+        payment_date TEXT NOT NULL, note TEXT, created_at TEXT NOT NULL
       )
     ''');
     await db.execute('''
@@ -260,6 +281,14 @@ class AppDatabase {
     if (oldV < 12) {
       await db.execute('ALTER TABLE lucky_draw_prizes ADD COLUMN prize_value TEXT');
     }
+    if (oldV < 13) {
+      await db.execute('ALTER TABLE customers ADD COLUMN milk_rate REAL DEFAULT 0');
+      await db.execute('''CREATE TABLE farmer_payments(id TEXT PRIMARY KEY, farmer_id TEXT NOT NULL, amount REAL NOT NULL, method TEXT NOT NULL, note TEXT, created_at TEXT NOT NULL)''');
+    }
+    if (oldV < 14) {
+      await db.execute('''CREATE TABLE loans(id TEXT PRIMARY KEY, name TEXT NOT NULL, lender TEXT NOT NULL, principal REAL NOT NULL, annual_interest_rate REAL NOT NULL DEFAULT 0, interest_method TEXT NOT NULL DEFAULT 'SIMPLE_DAILY_REDUCING', start_date TEXT NOT NULL, active INTEGER DEFAULT 1, note TEXT, created_at TEXT NOT NULL)''');
+      await db.execute('''CREATE TABLE loan_payments(id TEXT PRIMARY KEY, loan_id TEXT NOT NULL, amount REAL NOT NULL, payment_date TEXT NOT NULL, note TEXT, created_at TEXT NOT NULL)''');
+    }
   }
 
   Future<List<Map<String,Object?>>> query(String table, {String? where, List<Object?>? args, String? orderBy}) =>
@@ -280,8 +309,8 @@ class AppDatabase {
   Future<void> markSynced(String id) async => db.update('sync_queue', {'synced': 1}, where: 'id=?', whereArgs: [id]);
 
   static const syncableTables = {
-    'customers', 'products', 'invoices', 'invoice_items', 'ledger', 'payments', 'advances', 'expenses',
-    'farmers', 'milk_collections', 'stock_movements', 'returns', 'credit_reminders', 'lucky_draws',
+    'customers', 'products', 'invoices', 'invoice_items', 'ledger', 'payments', 'advances', 'expenses', 'loans', 'loan_payments',
+    'farmers', 'milk_collections', 'farmer_payments', 'stock_movements', 'returns', 'credit_reminders', 'lucky_draws',
     'lucky_draw_prizes', 'lucky_draw_tokens', 'lucky_draw_winners', 'tax_groups', 'payment_splits',
     'quotes', 'quote_items', 'orders',
   };
@@ -299,8 +328,8 @@ class AppDatabase {
   }
 
   static const snapshotTables = [
-    'customers', 'products', 'invoices', 'invoice_items', 'ledger', 'payments', 'advances', 'expenses',
-    'farmers', 'milk_collections', 'stock_movements', 'returns', 'credit_reminders', 'lucky_draws',
+    'customers', 'products', 'invoices', 'invoice_items', 'ledger', 'payments', 'advances', 'expenses', 'loans', 'loan_payments',
+    'farmers', 'milk_collections', 'farmer_payments', 'stock_movements', 'returns', 'credit_reminders', 'lucky_draws',
     'lucky_draw_prizes', 'lucky_draw_tokens', 'lucky_draw_winners', 'lucky_draw_identity_records',
     'tax_groups', 'payment_splits', 'quotes', 'quote_items', 'orders', 'users', 'audit_logs', 'sync_queue',
   ];
@@ -310,7 +339,7 @@ class AppDatabase {
     for (final table in snapshotTables) {
       tables[table] = await db.query(table);
     }
-    return jsonEncode({'format': 'gajurmukhi-offline-backup', 'schema_version': 12, 'exported_at': DateTime.now().toUtc().toIso8601String(), 'tables': tables});
+    return jsonEncode({'format': 'gajurmukhi-offline-backup', 'schema_version': 14, 'exported_at': DateTime.now().toUtc().toIso8601String(), 'tables': tables});
   }
 
   Future<void> importJson(String source) async {

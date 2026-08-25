@@ -38,6 +38,57 @@ class _StockScreenState extends State<StockScreen> {
     name.dispose(); price.dispose(); stock.dispose(); barcode.dispose();
   }
 
+  Future<void> editProduct(Map<String, Object?> product) async {
+    final name = TextEditingController(text: '${product['name'] ?? ''}');
+    final price = TextEditingController(text: '${product['sale_price'] ?? ''}');
+    final barcode = TextEditingController(text: '${product['barcode'] ?? ''}');
+    String category = '${product['category'] ?? 'Grocery'}';
+    if (!['Grocery', 'Dairy', 'Household', 'Other'].contains(category)) category = 'Other';
+    String unit = '${product['unit'] ?? 'Unit'}';
+    if (!['Unit', 'Litre', 'Kg', 'Packet'].contains(unit)) unit = 'Unit';
+    final ok = await showDialog<bool>(context: context, builder: (_) => StatefulBuilder(builder: (context, setDialogState) => AlertDialog(
+      title: const Text('Edit inventory item'),
+      content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextField(controller: name, decoration: const InputDecoration(labelText: 'Product name')),
+        const SizedBox(height: 10),
+        TextField(controller: barcode, decoration: const InputDecoration(labelText: 'Barcode', prefixIcon: Icon(Icons.qr_code_scanner))),
+        const SizedBox(height: 10),
+        TextField(controller: price, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Sale price (NPR)')),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(initialValue: category, decoration: const InputDecoration(labelText: 'Category'), items: const [DropdownMenuItem(value: 'Grocery', child: Text('Grocery')), DropdownMenuItem(value: 'Dairy', child: Text('Dairy')), DropdownMenuItem(value: 'Household', child: Text('Household')), DropdownMenuItem(value: 'Other', child: Text('Other'))], onChanged: (v) => setDialogState(() => category = v ?? category)),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(initialValue: unit, decoration: const InputDecoration(labelText: 'Unit'), items: const [DropdownMenuItem(value: 'Unit', child: Text('Unit')), DropdownMenuItem(value: 'Litre', child: Text('Litre')), DropdownMenuItem(value: 'Kg', child: Text('Kg')), DropdownMenuItem(value: 'Packet', child: Text('Packet'))], onChanged: (v) => setDialogState(() => unit = v ?? unit)),
+        const SizedBox(height: 8),
+        const Text('Use Stock adjustment to change quantity so inventory movement history stays correct.', style: TextStyle(fontSize: 12)),
+      ])),
+      actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Save changes'))],
+    )));
+    if (ok == true) {
+      try {
+        await widget.p.updateProduct('${product['id']}', name: name.text, salePrice: double.tryParse(price.text) ?? -1, category: category, unit: unit, barcode: barcode.text);
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Inventory item updated')));
+      } catch (error) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not update item: $error')));
+      }
+    }
+    name.dispose(); price.dispose(); barcode.dispose();
+  }
+
+  Future<void> archiveProduct(Map<String, Object?> product) async {
+    final confirmed = await showDialog<bool>(context: context, builder: (dialogContext) => AlertDialog(
+      title: Text('Archive ${product['name']}?'),
+      content: const Text('Archived items are hidden from billing and inventory but remain on past invoices and reports.'),
+      actions: [TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Archive'))],
+    ));
+    if (confirmed != true) return;
+    try {
+      await widget.p.archiveProduct('${product['id']}');
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Inventory item archived')));
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not archive item: $error')));
+    }
+  }
+
   Future<void> recordReturnForProduct(Map<String, Object?> product) async {
     final qty = TextEditingController();
     final amount = TextEditingController();
@@ -125,9 +176,13 @@ class _StockScreenState extends State<StockScreen> {
                     icon: const Icon(Icons.assignment_return_outlined),
                     onPressed: () => recordReturnForProduct(x),
                   ),
+                  PopupMenuButton<String>(
+                    onSelected: (value) { if (value == 'edit') editProduct(x); if (value == 'adjust') adjust(x); if (value == 'archive') archiveProduct(x); },
+                    itemBuilder: (_) => const [PopupMenuItem(value: 'edit', child: Text('Edit item')), PopupMenuItem(value: 'adjust', child: Text('Adjust stock')), PopupMenuItem(value: 'archive', child: Text('Archive item'))],
+                  ),
                 ],
               ),
-              onTap: () => adjust(x),
+              onTap: () => editProduct(x),
             ),
           );
         }),

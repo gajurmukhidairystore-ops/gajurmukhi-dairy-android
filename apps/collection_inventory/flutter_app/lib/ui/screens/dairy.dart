@@ -115,17 +115,67 @@ class _DairyScreenState extends State<DairyScreen> {
     final rows = widget.p.milk.where((entry) => '${entry['farmer_id']}' == id).toList();
     final litresTotal = rows.fold<double>(0, (sum, entry) => sum + ((entry['litres'] as num?)?.toDouble() ?? 0));
     final amountTotal = rows.fold<double>(0, (sum, entry) => sum + ((entry['amount'] as num?)?.toDouble() ?? 0));
+    final balance = await widget.p.farmerBalance(id);
     final phone = '${farmer['phone'] ?? ''}'.trim();
     if (phone.isEmpty) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Add a farmer phone number before sharing WhatsApp settlement')));
       return;
     }
-    final message = '*GAJURMUKHI DAIRY & STORE*\nFarmer collection settlement\nDate: ${DateTime.now().toLocal()}\nFarmer: ${farmer['name']}\nMilk collected: ${litresTotal.toStringAsFixed(2)} L\nAmount payable: NPR ${amountTotal.toStringAsFixed(2)}\nValue for Life';
+    final message = '*GAJURMUKHI DAIRY & STORE*\nFarmer collection settlement\nDate: ${DateTime.now().toLocal()}\nFarmer: ${farmer['name']}\nMilk collected: ${litresTotal.toStringAsFixed(2)} L\nCollection value: NPR ${amountTotal.toStringAsFixed(2)}\nBalance payable: NPR ${balance.toStringAsFixed(2)}\nValue for Life';
     try {
       await WhatsAppService().openMessage(phone, message);
     } catch (error) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open WhatsApp: $error')));
     }
+  }
+
+  Future<void> _editFarmerRate(Map<String, Object?> farmer) async {
+    final value = TextEditingController(text: '${farmer['rate_per_litre'] ?? rate.text}');
+    final result = await showDialog<double>(context: context, builder: (dialogContext) => AlertDialog(
+      title: Text('Fixed farmer rate · ${farmer['name']}'),
+      content: TextField(controller: value, autofocus: true, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'NPR per litre')),
+      actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(dialogContext, double.tryParse(value.text.trim())), child: const Text('Save rate'))],
+    ));
+    value.dispose();
+    if (result == null) return;
+    try {
+      await widget.p.updateFarmerRate('${farmer['id']}', result);
+      if ('${farmer['id']}' == farmerId && mounted) rate.text = result.toStringAsFixed(2);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Farmer rate saved')));
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save farmer rate: $error')));
+    }
+  }
+
+  Future<void> _settleFarmer(Map<String, Object?> farmer) async {
+    final balance = await widget.p.farmerBalance('${farmer['id']}');
+    if (!mounted) return;
+    if (balance <= 0) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('This farmer has no unpaid collection balance'))); return; }
+    final amount = TextEditingController(text: balance.toStringAsFixed(2));
+    final note = TextEditingController(text: 'Milk collection settlement');
+    String method = 'CASH';
+    final ok = await showDialog<bool>(context: context, builder: (dialogContext) => StatefulBuilder(builder: (dialogContext, setDialogState) => AlertDialog(
+      title: Text('Pay farmer · ${farmer['name']}'),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
+        Text('Payable balance: NPR ${balance.toStringAsFixed(2)}'),
+        const SizedBox(height: 8),
+        TextField(controller: amount, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Payment amount (NPR)')),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(initialValue: method, decoration: const InputDecoration(labelText: 'Payment method'), items: const [DropdownMenuItem(value: 'CASH', child: Text('Cash')), DropdownMenuItem(value: 'QR', child: Text('QR')), DropdownMenuItem(value: 'BANK', child: Text('Bank'))], onChanged: (value) => setDialogState(() => method = value ?? method)),
+        const SizedBox(height: 8),
+        TextField(controller: note, decoration: const InputDecoration(labelText: 'Note')),
+      ]),
+      actions: [TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Record payment'))],
+    )));
+    if (ok == true) {
+      try {
+        await widget.p.recordFarmerPayment(farmerId: '${farmer['id']}', amount: double.tryParse(amount.text.trim()) ?? 0, method: method, note: note.text.trim());
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Farmer payment recorded')));
+      } catch (error) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not record farmer payment: $error')));
+      }
+    }
+    amount.dispose(); note.dispose();
   }
 
   Future<void> saveCollection() async {
@@ -195,7 +245,10 @@ class _DairyScreenState extends State<DairyScreen> {
         items: widget.p.farmers.map((f) => DropdownMenuItem(
           value: '${f['id']}', child: Text('${f['name']}'),
         )).toList(),
-        onChanged: (v) => setState(() => farmerId = v),
+        onChanged: (v) {
+          final selected = widget.p.farmers.where((farmer) => '${farmer['id']}' == v).toList();
+          setState(() { farmerId = v; if (selected.isNotEmpty) rate.text = '${selected.first['rate_per_litre'] ?? rate.text}'; });
+        },
         decoration: const InputDecoration(labelText: 'Farmer'),
       ),
       if (widget.p.farmers.isEmpty) const Padding(padding: EdgeInsets.only(top: 6), child: Text('No farmers registered yet. Add a farmer from Parties before saving collection.', style: TextStyle(color: Colors.deepOrange, fontSize: 12))),
@@ -233,8 +286,8 @@ class _DairyScreenState extends State<DairyScreen> {
       ...widget.p.farmers.map((farmer) => ListTile(
         leading: const Icon(Icons.agriculture_outlined),
         title: Text('${farmer['name']}'),
-        subtitle: Text('${farmer['phone'] ?? 'No phone'} · Farmer account'),
-        trailing: IconButton(tooltip: 'Share farmer settlement on WhatsApp', icon: const Icon(Icons.chat_outlined), onPressed: () => _shareFarmerSettlement(farmer)),
+        subtitle: Text('${farmer['phone'] ?? 'No phone'} · Fixed rate NPR ${farmer['rate_per_litre'] ?? 0}/L'),
+        trailing: PopupMenuButton<String>(onSelected: (value) { if (value == 'pay') _settleFarmer(farmer); if (value == 'rate') _editFarmerRate(farmer); if (value == 'share') _shareFarmerSettlement(farmer); }, itemBuilder: (_) => const [PopupMenuItem(value: 'pay', child: Text('Pay farmer bill')), PopupMenuItem(value: 'rate', child: Text('Set fixed rate')), PopupMenuItem(value: 'share', child: Text('Share settlement on WhatsApp'))]),
       )),
       const Divider(),
       ...widget.p.milk.map((m) => ListTile(

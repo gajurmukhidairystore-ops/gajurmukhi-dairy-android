@@ -14,11 +14,21 @@ class AppSettingsService {
   static const themeKey = 'gajurmukhi_theme_mode';
   static const defaultPaymentKey = 'gajurmukhi_default_payment_method';
   static const lowStockKey = 'gajurmukhi_low_stock_threshold';
+  static const currencyKey = 'gajurmukhi_currency_code';
+  static const currencies = <String, String>{
+    'NPR': 'NPR · Nepalese Rupee',
+    'INR': 'INR · Indian Rupee',
+    'USD': 'USD · US Dollar',
+    'EUR': 'EUR · Euro',
+    'GBP': 'GBP · British Pound',
+  };
   static final ValueNotifier<ThemeMode> themeMode = ValueNotifier(ThemeMode.light);
+  static final ValueNotifier<String> currencyCode = ValueNotifier('NPR');
 
   static Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
     themeMode.value = _themeFrom(prefs.getString(themeKey));
+    currencyCode.value = _currencyFrom(prefs.getString(currencyKey));
   }
 
   static ThemeMode _themeFrom(String? value) => switch (value) {
@@ -27,12 +37,26 @@ class AppSettingsService {
         _ => ThemeMode.light,
       };
 
+  static String _currencyFrom(String? value) {
+    final code = value?.trim().toUpperCase() ?? 'NPR';
+    return currencies.containsKey(code) ? code : 'NPR';
+  }
+
+  static String money(num value) => '${currencyCode.value} ${value.toStringAsFixed(2)}';
+
   static Future<void> setTheme(String value) async {
     final normalized = value.trim().toLowerCase();
     final mode = _themeFrom(normalized);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(themeKey, normalized == 'dark' || normalized == 'system' ? normalized : 'light');
     themeMode.value = mode;
+  }
+
+  static Future<void> setCurrency(String value) async {
+    final code = _currencyFrom(value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(currencyKey, code);
+    currencyCode.value = code;
   }
 
   static Future<String?> read(String key) async => (await SharedPreferences.getInstance()).getString(key);
@@ -44,6 +68,7 @@ class AiCommandService {
 • set theme to dark / light / system
 • set default payment to cash / qr / bank
 • set low stock alert to 10
+• set currency to NPR / INR / USD / EUR / GBP
 • show current settings
 • help''';
 
@@ -64,7 +89,8 @@ class AiCommandService {
       final themeValue = prefs.getString(AppSettingsService.themeKey) ?? 'light';
       final payment = prefs.getString(AppSettingsService.defaultPaymentKey) ?? 'cash';
       final lowStock = prefs.getString(AppSettingsService.lowStockKey) ?? '5';
-      return AiCommandResult(message: 'Current settings on this phone:\nTheme: $themeValue\nDefault payment: $payment\nLow-stock alert: $lowStock units.');
+      final currency = prefs.getString(AppSettingsService.currencyKey) ?? 'NPR';
+      return AiCommandResult(message: 'Current settings on this phone:\nTheme: $themeValue\nDefault payment: $payment\nCurrency: $currency\nLow-stock alert: $lowStock units.');
     }
 
     final payment = RegExp(r'(?:set\s+)?(?:default\s+)?payment\s+(?:to\s+)?(cash|qr|bank)').firstMatch(lower)?.group(1);
@@ -74,6 +100,16 @@ class AiCommandService {
       await AppSettingsService.write(AppSettingsService.defaultPaymentKey, payment);
       await _audit(role, text, 'default_payment=$payment');
       return AiCommandResult(message: 'Default payment method changed to ${payment.toUpperCase()}.', changed: true);
+    }
+
+    final currency = RegExp(r'(?:set\s+)?currency\s+(?:to\s+)?(npr|inr|usd|eur|gbp)').firstMatch(lower)?.group(1);
+    if (currency != null) {
+      if (role != 'admin') return const AiCommandResult(message: 'Only Admin can change the business currency.');
+      final code = currency.toUpperCase();
+      if (!confirmed) return AiCommandResult(message: 'This changes the displayed currency to $code for new billing, payment, balance, receipt, and message displays on this phone. Historic amounts are not converted. Press Confirm to apply it.', requiresConfirmation: true, confirmationToken: 'currency:$code');
+      await AppSettingsService.setCurrency(code);
+      await _audit(role, text, 'currency=$code');
+      return AiCommandResult(message: 'Business currency changed to $code. Existing amounts were not converted.', changed: true);
     }
 
     final lowStock = RegExp(r'(?:set\s+)?low\s*stock\s+(?:alert\s+)?(?:to\s+)?(\d+(?:\.\d+)?)').firstMatch(lower)?.group(1);

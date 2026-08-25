@@ -22,4 +22,12 @@ void main() {
     expect(result.confirmationToken, 'low_stock:10');
     expect(result.changed, isFalse);
   });
+
+  test('currency setting is Admin-only and requires confirmation before changing displays', () async {
+    final blocked = await AiCommandService().execute(command: 'set currency to usd', role: 'shop');
+    expect(blocked.message, contains('Only Admin'));
+    final pending = await AiCommandService().execute(command: 'set currency to usd', role: 'admin');
+    expect(pending.requiresConfirmation, isTrue);
+    expect(pending.confirmationToken, 'currency:USD');
+  });
 }
