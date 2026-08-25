@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../providers/business_provider.dart';
 import '../../app_profile.dart';
 import '../../services/ai_service.dart';
 import '../../services/ai_command_service.dart';
+import '../../services/mobile_cloud_service.dart';
 
 class AiScreen extends StatefulWidget {
   final BusinessProvider p;
@@ -15,11 +17,15 @@ class AiScreen extends StatefulWidget {
 class _AiScreenState extends State<AiScreen> {
   final q = TextEditingController();
   final command = TextEditingController();
+  final socialPrompt = TextEditingController();
   String answer = 'Ask about sales, stock, customer dues, expenses, milk collection, or product performance.';
   String commandAnswer = AiCommandService.supportedCommands;
   AiCommandResult? pendingCommand;
   bool busy = false;
   bool commandBusy = false;
+  bool socialBusy = false;
+  String socialChannel = 'facebook';
+  SocialMediaDraft? socialDraft;
   static const apiBaseUrl = String.fromEnvironment('API_BASE_URL');
 
   List<String> get prompts {
@@ -53,6 +59,35 @@ class _AiScreenState extends State<AiScreen> {
     if (mounted) setState(() => busy = false);
   }
 
+  Future<void> _generateSocialDraft() async {
+    if (widget.role != 'admin') return;
+    final prompt = socialPrompt.text.trim();
+    if (prompt.length < 8) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Describe the promotion in at least 8 characters.')));
+      return;
+    }
+    final confirmed = await showDialog<bool>(context: context, builder: (dialogContext) => AlertDialog(
+      title: const Text('Generate social-media draft?'),
+      content: const Text('This sends your promotion description to the secure cloud image and caption services. One image and caption draft will be generated; nothing will be posted automatically.'),
+      actions: [TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Generate'))],
+    ));
+    if (confirmed != true || !mounted) return;
+    setState(() => socialBusy = true);
+    try {
+      final draft = await MobileCloudService().generateSocialMediaDraft(channel: socialChannel, prompt: prompt);
+      if (mounted) setState(() => socialDraft = draft);
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not generate draft: $error')));
+    }
+    if (mounted) setState(() => socialBusy = false);
+  }
+
+  Future<void> _shareSocialDraft() async {
+    final draft = socialDraft;
+    if (draft == null) return;
+    await Share.share('${draft.caption}\n\nGenerated image: ${draft.imageUrl}');
+  }
+
   @override
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.all(16), children: [
     Text('${AppProfile.current.name} AI Assistant', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
@@ -66,6 +101,31 @@ class _AiScreenState extends State<AiScreen> {
     FilledButton.icon(onPressed: busy ? null : _ask, icon: busy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.auto_awesome), label: Text(busy ? 'Analyzing…' : 'Analyze')),
     const SizedBox(height: 14),
     Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(answer))),
+    if (widget.role == 'admin') ...[
+      const SizedBox(height: 18),
+      Card(
+        color: Theme.of(context).colorScheme.primaryContainer,
+        child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('AI Social Media Studio', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 5),
+          const Text('Create a reviewable image-and-caption draft for Facebook, Instagram, WhatsApp Status, or another channel. It does not post anything automatically.'),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(value: socialChannel, decoration: const InputDecoration(labelText: 'Channel'), items: const [DropdownMenuItem(value: 'facebook', child: Text('Facebook')), DropdownMenuItem(value: 'instagram', child: Text('Instagram')), DropdownMenuItem(value: 'whatsapp_status', child: Text('WhatsApp Status')), DropdownMenuItem(value: 'other', child: Text('Other social media'))], onChanged: socialBusy ? null : (value) => setState(() => socialChannel = value ?? socialChannel)),
+          const SizedBox(height: 10),
+          TextField(controller: socialPrompt, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Promotion details', hintText: 'Example: Fresh morning milk delivery for Dashain week')),
+          const SizedBox(height: 10),
+          FilledButton.icon(onPressed: socialBusy ? null : _generateSocialDraft, icon: socialBusy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.image_outlined), label: Text(socialBusy ? 'Generating image and caption…' : 'Generate draft')),
+          if (socialDraft != null) ...[
+            const Divider(height: 28),
+            ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.network(socialDraft!.imageUrl, height: 240, width: double.infinity, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const SizedBox(height: 100, child: Center(child: Text('Generated image link could not be displayed. You can still share it.')))),
+            const SizedBox(height: 10),
+            SelectableText(socialDraft!.caption),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(onPressed: _shareSocialDraft, icon: const Icon(Icons.share), label: const Text('Share draft to social app')),
+          ],
+        ])),
+      ),
+    ],
     const SizedBox(height: 18),
     Card(
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -93,5 +153,5 @@ class _AiScreenState extends State<AiScreen> {
   ]);
 
   @override
-  void dispose() { q.dispose(); command.dispose(); super.dispose(); }
+  void dispose() { q.dispose(); command.dispose(); socialPrompt.dispose(); super.dispose(); }
 }

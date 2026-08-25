@@ -7,7 +7,7 @@ class AppDatabase {
 
   Future<void> init({String? path}) async {
     final p = path ?? join(await getDatabasesPath(), 'gajurmukhi_pro.db');
-    db = await openDatabase(p, version: 14, onCreate: _create, onUpgrade: _upgrade);
+    db = await openDatabase(p, version: 15, onCreate: _create, onUpgrade: _upgrade);
   }
 
   Future<void> _create(Database db, int version) async {
@@ -31,7 +31,7 @@ class AppDatabase {
         id TEXT PRIMARY KEY, invoice_no TEXT UNIQUE NOT NULL, customer_id TEXT,
         subtotal REAL NOT NULL, discount REAL DEFAULT 0, tax REAL DEFAULT 0,
         total REAL NOT NULL, paid REAL DEFAULT 0, due REAL DEFAULT 0,
-        tax_rate REAL DEFAULT 0, payment_method TEXT, status TEXT DEFAULT 'PAID', qr_status TEXT DEFAULT 'not_applicable', note TEXT, created_at TEXT NOT NULL
+        tax_rate REAL DEFAULT 0, payment_method TEXT, status TEXT DEFAULT 'PAID', qr_status TEXT DEFAULT 'not_applicable', discount_reason TEXT, note TEXT, created_at TEXT NOT NULL
       )
     ''');
     await db.execute('''
@@ -289,6 +289,9 @@ CREATE TABLE milk_collections(
       await db.execute('''CREATE TABLE loans(id TEXT PRIMARY KEY, name TEXT NOT NULL, lender TEXT NOT NULL, principal REAL NOT NULL, annual_interest_rate REAL NOT NULL DEFAULT 0, interest_method TEXT NOT NULL DEFAULT 'SIMPLE_DAILY_REDUCING', start_date TEXT NOT NULL, active INTEGER DEFAULT 1, note TEXT, created_at TEXT NOT NULL)''');
       await db.execute('''CREATE TABLE loan_payments(id TEXT PRIMARY KEY, loan_id TEXT NOT NULL, amount REAL NOT NULL, payment_date TEXT NOT NULL, note TEXT, created_at TEXT NOT NULL)''');
     }
+    if (oldV < 15) {
+      await db.execute('ALTER TABLE invoices ADD COLUMN discount_reason TEXT');
+    }
   }
 
   Future<List<Map<String,Object?>>> query(String table, {String? where, List<Object?>? args, String? orderBy}) =>
@@ -339,7 +342,7 @@ CREATE TABLE milk_collections(
     for (final table in snapshotTables) {
       tables[table] = await db.query(table);
     }
-    return jsonEncode({'format': 'gajurmukhi-offline-backup', 'schema_version': 14, 'exported_at': DateTime.now().toUtc().toIso8601String(), 'tables': tables});
+    return jsonEncode({'format': 'gajurmukhi-offline-backup', 'schema_version': 15, 'exported_at': DateTime.now().toUtc().toIso8601String(), 'tables': tables});
   }
 
   Future<void> importJson(String source) async {

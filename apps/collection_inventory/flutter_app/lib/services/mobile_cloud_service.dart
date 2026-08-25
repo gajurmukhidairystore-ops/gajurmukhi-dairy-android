@@ -29,6 +29,19 @@ class CloudSession {
   const CloudSession({required this.token, required this.expiresAt, required this.account});
 }
 
+class SocialMediaDraft {
+  final String channel;
+  final String prompt;
+  final String imageUrl;
+  final String caption;
+
+  const SocialMediaDraft({required this.channel, required this.prompt, required this.imageUrl, required this.caption});
+
+  factory SocialMediaDraft.fromJson(Map<String, dynamic> json) => SocialMediaDraft(
+        channel: '${json['channel']}', prompt: '${json['prompt']}', imageUrl: '${json['imageUrl']}', caption: '${json['caption']}',
+      );
+}
+
 class MobileCloudService {
   static const String baseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: 'https://gajurdairy-awcu8lwj.manus.space');
   static const _tokenKey = 'gajurmukhi_cloud_session_token';
@@ -74,6 +87,14 @@ class MobileCloudService {
     if (session == null) throw StateError('Sign in to the shared cloud before creating role accounts.');
     final body = await _post('/api/mobile/users', {'displayName': displayName, 'username': username, 'pin': pin, 'role': role}, token: session.token);
     return CloudAccount.fromJson(body['account'] as Map<String, dynamic>);
+  }
+
+  Future<SocialMediaDraft> generateSocialMediaDraft({required String channel, required String prompt}) async {
+    final session = await savedSession();
+    if (session == null) throw StateError('Sign in to the shared cloud before generating a social-media draft.');
+    if (session.account.role != 'admin') throw StateError('Only Admin can generate social-media drafts.');
+    final body = await _post('/api/mobile/social-media/generate', {'channel': channel, 'prompt': prompt}, token: session.token);
+    return SocialMediaDraft.fromJson(body);
   }
 
   Future<Map<String, dynamic>> pull(String token, DateTime since) => _get('/api/mobile/sync/pull?since=${Uri.encodeQueryComponent(since.toUtc().toIso8601String())}', token: token);

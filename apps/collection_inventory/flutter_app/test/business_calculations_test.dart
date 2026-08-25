@@ -131,6 +131,14 @@ void main() {
     expect(message, contains('*QR payment:* Pending confirmation'));
   });
 
+  test('WhatsApp invoice summary identifies the reason for a discount', () {
+    final message = WhatsAppService.dailyTransactionMessage(
+      invoiceNumber: 'INV-DISCOUNT', date: DateTime(2026, 8, 15), items: const [],
+      subtotal: 500, discount: 50, discountReason: 'Dashain festival offer', total: 450, paid: 450,
+    );
+    expect(message, contains('*Discount:* -NPR 50.00 (Dashain festival offer)'));
+  });
+
   test('WhatsApp templates render customer and order variables', () {
     final message = WhatsAppService.dailyTransactionMessage(
       invoiceNumber: 'INV-9',

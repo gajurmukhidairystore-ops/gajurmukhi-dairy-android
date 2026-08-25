@@ -23,6 +23,7 @@ class _BillingScreenState extends State<BillingScreen> {
   final search = TextEditingController();
   final customerPhone = TextEditingController();
   final upiId = TextEditingController();
+  final discountReason = TextEditingController();
   final whatsappTemplate = TextEditingController(text: WhatsAppService.defaultTemplate);
   final List<Map<String, dynamic>> cart = [];
   String payment = 'CASH';
@@ -39,6 +40,7 @@ class _BillingScreenState extends State<BillingScreen> {
   double lastSavedPaid = 0;
   double lastSavedDue = 0;
   double lastSavedDiscount = 0;
+  String lastSavedDiscountReason = '';
   String lastSavedPayment = 'CASH';
   String lastSavedQrStatus = 'not_applicable';
   String lastSavedCustomerName = 'Walk-in Customer';
@@ -91,6 +93,7 @@ class _BillingScreenState extends State<BillingScreen> {
     search.dispose();
     customerPhone.dispose();
     upiId.dispose();
+    discountReason.dispose();
     whatsappTemplate.dispose();
     super.dispose();
   }
@@ -177,12 +180,13 @@ class _BillingScreenState extends State<BillingScreen> {
     lastSavedPaid = paid;
     lastSavedDue = savedDue;
     lastSavedDiscount = discount;
+    lastSavedDiscountReason = discountReason.text.trim();
     lastSavedPayment = payment;
     lastSavedQrStatus = qrStatus;
     lastSavedCustomerName = '${customerById(selectedCustomerId)?['name'] ?? 'Walk-in Customer'}';
     lastSavedCustomerPhone = customerPhone.text.trim();
     lastLuckyToken = null;
-    await widget.p.createInvoice(customerId: selectedCustomerId, items: cart, discount: discount, paid: paid, paymentMethod: payment, qrStatus: qrStatus, taxRate: taxRate, paymentSplits: payment == 'SPLIT' ? paymentTenders : const []);
+    await widget.p.createInvoice(customerId: selectedCustomerId, items: cart, discount: discount, discountReason: discountReason.text.trim(), paid: paid, paymentMethod: payment, qrStatus: qrStatus, taxRate: taxRate, paymentSplits: payment == 'SPLIT' ? paymentTenders : const []);
     final openDraws = widget.p.luckyDraws.where((row) => '${row['status']}' == 'OPEN').toList();
     final draw = openDraws.isEmpty ? null : openDraws.first;
     if (savedTotal >= 1000 && draw != null && mounted) {
@@ -195,7 +199,7 @@ class _BillingScreenState extends State<BillingScreen> {
     }
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(lastLuckyToken == null ? 'Invoice saved' : 'Invoice saved with lucky token $lastLuckyToken')));
-    setState(() { cart.clear(); paid = 0; paymentTenders = []; });
+    setState(() { cart.clear(); paid = 0; discount = 0; discountReason.clear(); paymentTenders = []; });
   }
 
   Future<void> _manageSplitTenders() async {
@@ -308,6 +312,7 @@ class _BillingScreenState extends State<BillingScreen> {
       items: sourceCart.map((item) => <String, Object?>{'name': item['name'], 'quantity': item['qty'], 'unitPrice': item['price']}).toList(),
       subtotal: usingSavedBill ? lastSavedSubtotal : subtotal,
       discount: usingSavedBill ? lastSavedDiscount : discount,
+      discountReason: usingSavedBill ? lastSavedDiscountReason : discountReason.text.trim(),
       total: usingSavedBill ? lastSavedTotal : total,
       paid: usingSavedBill ? lastSavedPaid : paid,
       due: usingSavedBill ? lastSavedDue : due,
@@ -375,6 +380,8 @@ class _BillingScreenState extends State<BillingScreen> {
                   ),
                   Text('Subtotal: ${AppSettingsService.money(subtotal)}'),
                   Text('Discount: ${AppSettingsService.money(discount)}'),
+                  TextField(keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: 'Discount amount (${AppSettingsService.currencyCode.value})'), onChanged: (value) => setState(() => discount = double.tryParse(value) ?? 0)),
+                  if (discount > 0) Padding(padding: const EdgeInsets.only(top: 8), child: TextField(controller: discountReason, decoration: const InputDecoration(labelText: 'Discount reason / occasion', hintText: 'Festival offer, regular party, goodwill, damaged item'))),
                   Text('Tax (${taxRate.toStringAsFixed(2)}%): ${AppSettingsService.money(tax)}'),
                   Text('Total: ${AppSettingsService.money(total)}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   Text('Paid: ${AppSettingsService.money(paid)}'),
@@ -481,6 +488,8 @@ class _BillingScreenState extends State<BillingScreen> {
                               total: saved ? lastSavedTotal : total,
                               paid: saved ? lastSavedPaid : paid,
                               due: saved ? lastSavedDue : due,
+                              discount: saved ? lastSavedDiscount : discount,
+                              discountReason: saved ? lastSavedDiscountReason : discountReason.text.trim(),
                               qrStatus: saved ? lastSavedQrStatus : qrStatus,
                               luckyToken: lastLuckyToken,
                             );

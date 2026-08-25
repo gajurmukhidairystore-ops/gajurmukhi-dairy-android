@@ -171,3 +171,5 @@
 - [ ] Add a configurable Fonpay Smart QR payment option that encodes the exact customer or party bill amount and retains a generic QR fallback until merchant integration details are configured.
 - [ ] Add a configurable business currency setting, defaulting to NPR, for new billing, payment, balance, QR-label, receipt, and WhatsApp-summary displays without converting historic amounts.
 - [ ] Add loan accounts with lender, opening principal, interest rate, interest method, start date, daily repayment entries, today-paid and total-paid views, remaining-principal and accrued-interest calculation, and a loan statement.
+- [ ] Add an Admin-only AI Social Media Studio that can generate branded image-and-caption drafts for Facebook, Instagram, WhatsApp Status, and other selected channels, with review confirmation and native sharing; require a configured server-side image-generation integration for final image output.
+- [ ] Add invoice discount reason and occasion fields, with discount amount plus reason shown consistently in saved bills, printer receipts, WhatsApp summaries, and invoice detail views.

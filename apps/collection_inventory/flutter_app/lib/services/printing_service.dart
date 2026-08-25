@@ -13,6 +13,8 @@ class PrintingService {
     required double total,
     required double paid,
     required double due,
+    double discount = 0,
+    String? discountReason,
     String qrStatus = 'not_applicable',
     String? luckyToken,
   }) async {
@@ -39,6 +41,7 @@ class PrintingService {
             pw.SizedBox(height: 16),
             pw.Align(alignment: pw.Alignment.centerRight,
               child: pw.Column(children: [
+                if (discount > 0) pw.Text('Discount: -${AppSettingsService.money(discount)}${discountReason?.trim().isNotEmpty == true ? ' (${discountReason!.trim()})' : ''}'),
                 pw.Text('Total: ${AppSettingsService.money(total)}'),
                 pw.Text('Paid: ${AppSettingsService.money(paid)}'),
                 pw.Text('Due: ${AppSettingsService.money(due)}'),

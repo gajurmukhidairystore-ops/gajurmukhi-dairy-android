@@ -362,6 +362,7 @@ class BusinessProvider extends ChangeNotifier {
     String? customerId,
     required List<Map<String,dynamic>> items,
     required double discount,
+    String discountReason = '',
     required double paid,
     required String paymentMethod,
     String qrStatus = 'not_applicable',
@@ -373,6 +374,8 @@ class BusinessProvider extends ChangeNotifier {
     final subtotal = items.fold<double>(0, (s, i) => s + (i['total'] as num).toDouble());
     final tax = calculateTax(subtotal: subtotal, discount: discount, ratePercent: taxRate);
     final total = ((subtotal - discount).clamp(0, double.infinity) + tax).toDouble();
+    if (discount < 0 || discount > subtotal) throw ArgumentError('Discount must be between zero and the subtotal');
+    if (discount > 0 && discountReason.trim().isEmpty) throw ArgumentError('Enter the discount reason or occasion for this bill');
     if (paymentMethod == 'SPLIT' && !arePaymentSplitsBalanced(total: paid, splits: paymentSplits)) throw ArgumentError('Split payment tenders must add up to the invoice total paid');
     if (paid < 0 || paid > total) throw ArgumentError('Paid amount must be between zero and the invoice total');
     final due = (total - paid).clamp(0, double.infinity).toDouble();
@@ -381,7 +384,7 @@ class BusinessProvider extends ChangeNotifier {
     await db.db.transaction((txn) async {
       await txn.insert('invoices', {
         'id': id, 'invoice_no': no, 'customer_id': customerId,
-        'subtotal': subtotal, 'discount': discount, 'tax': tax, 'tax_rate': taxRate, 'total': total, 'paid': paid, 'due': due,
+        'subtotal': subtotal, 'discount': discount, 'discount_reason': discountReason.trim(), 'tax': tax, 'tax_rate': taxRate, 'total': total, 'paid': paid, 'due': due,
         'payment_method': paymentMethod, 'status': due <= 0 ? 'PAID' : 'CREDIT', 'qr_status': qrStatus, 'created_at': now
       });
       for (final i in items) {
@@ -410,7 +413,7 @@ class BusinessProvider extends ChangeNotifier {
         });
       }
     });
-    await db.enqueueSync(entity: 'invoices', entityId: id, operation: 'upsert', payload: {'id': id, 'invoice_no': no, 'customer_id': customerId, 'subtotal': subtotal, 'discount': discount, 'tax': tax, 'tax_rate': taxRate, 'total': total, 'paid': paid, 'due': due, 'payment_method': paymentMethod, 'status': due <= 0 ? 'PAID' : 'CREDIT', 'qr_status': qrStatus, 'items': items, 'payment_splits': paymentSplits});
+    await db.enqueueSync(entity: 'invoices', entityId: id, operation: 'upsert', payload: {'id': id, 'invoice_no': no, 'customer_id': customerId, 'subtotal': subtotal, 'discount': discount, 'discount_reason': discountReason.trim(), 'tax': tax, 'tax_rate': taxRate, 'total': total, 'paid': paid, 'due': due, 'payment_method': paymentMethod, 'status': due <= 0 ? 'PAID' : 'CREDIT', 'qr_status': qrStatus, 'items': items, 'payment_splits': paymentSplits});
     await refresh();
   }
 

@@ -379,10 +379,10 @@ class _BiometricSettingsScreenState extends State<BiometricSettingsScreen> {
             builder: (context, code, _) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               const Text('Business currency', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              Text('The selected code is used for new billing, balance, payment, QR-label, receipt, and WhatsApp displays. Amounts are not converted.'),
+              const Text('The selected code is used for new billing, balance, payment, QR-label, receipt, and WhatsApp displays. Amounts are not converted.'),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: code,
+                initialValue: code,
                 decoration: const InputDecoration(labelText: 'Currency'),
                 items: AppSettingsService.currencies.entries.map((entry) => DropdownMenuItem(value: entry.key, child: Text(entry.value))).toList(),
                 onChanged: widget.session.role == 'admin' ? (value) { if (value != null) AppSettingsService.setCurrency(value); } : null,
