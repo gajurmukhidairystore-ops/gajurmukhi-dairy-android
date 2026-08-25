@@ -162,7 +162,7 @@
 - [ ] Place the camera scanner prominently on the billing front counter and add scanned products directly to the current customer bill.
 - [ ] Add local music playback from audio files selected through the phone file picker, including playlist and background playback controls.
 - [x] Add per-farmer milk-rate settings and per-party fixed pricing controls that apply automatically when the selected record is used.
-- [ ] Add ordered multi-stop GPS delivery routes with delivered/not-delivered confirmation and reminders for customer goods or milk not handed over.
+- [x] Add ordered multi-stop GPS delivery routes with delivered/not-delivered confirmation and reminders for customer goods or milk not handed over.
 - [x] Verify and harden farmer milk collection posting to sellable dairy inventory and party sales.
 - [x] Add farmer bill balance, payment settlement, and WhatsApp settlement-sharing workflow.
 - [x] Add clear inventory create, edit, and archive controls in the unified Gajurmukhi One app.
