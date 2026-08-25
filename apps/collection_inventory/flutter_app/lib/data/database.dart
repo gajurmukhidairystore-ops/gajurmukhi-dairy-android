@@ -7,7 +7,7 @@ class AppDatabase {
 
   Future<void> init({String? path}) async {
     final p = path ?? join(await getDatabasesPath(), 'gajurmukhi_pro.db');
-    db = await openDatabase(p, version: 15, onCreate: _create, onUpgrade: _upgrade);
+    db = await openDatabase(p, version: 16, onCreate: _create, onUpgrade: _upgrade);
   }
 
   Future<void> _create(Database db, int version) async {
@@ -187,7 +187,9 @@ CREATE TABLE milk_collections(
         last_driver_latitude REAL, last_driver_longitude REAL, last_driver_accuracy REAL,
         last_driver_at TEXT, driver_distance_meters REAL, tracking_interval_seconds INTEGER DEFAULT 30,
         arrival_radius_meters REAL DEFAULT 100, call_unlocked INTEGER DEFAULT 0,
-        call_unlocked_at TEXT, call_attempted_at TEXT
+        call_unlocked_at TEXT, call_attempted_at TEXT,
+        route_position INTEGER, delivery_result TEXT DEFAULT 'PENDING',
+        missing_goods_note TEXT, handover_at TEXT
       )
     ''');
     await db.execute('''
@@ -292,6 +294,12 @@ CREATE TABLE milk_collections(
     if (oldV < 15) {
       await db.execute('ALTER TABLE invoices ADD COLUMN discount_reason TEXT');
     }
+    if (oldV < 16) {
+      await db.execute('ALTER TABLE orders ADD COLUMN route_position INTEGER');
+      await db.execute("ALTER TABLE orders ADD COLUMN delivery_result TEXT DEFAULT 'PENDING'");
+      await db.execute('ALTER TABLE orders ADD COLUMN missing_goods_note TEXT');
+      await db.execute('ALTER TABLE orders ADD COLUMN handover_at TEXT');
+    }
   }
 
   Future<List<Map<String,Object?>>> query(String table, {String? where, List<Object?>? args, String? orderBy}) =>
@@ -342,7 +350,7 @@ CREATE TABLE milk_collections(
     for (final table in snapshotTables) {
       tables[table] = await db.query(table);
     }
-    return jsonEncode({'format': 'gajurmukhi-offline-backup', 'schema_version': 15, 'exported_at': DateTime.now().toUtc().toIso8601String(), 'tables': tables});
+    return jsonEncode({'format': 'gajurmukhi-offline-backup', 'schema_version': 16, 'exported_at': DateTime.now().toUtc().toIso8601String(), 'tables': tables});
   }
 
   Future<void> importJson(String source) async {

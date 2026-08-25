@@ -550,11 +550,14 @@ class BusinessProvider extends ChangeNotifier {
 
   static bool isArrivalEligible({required double distanceMeters, double radiusMeters = defaultArrivalRadiusMeters}) => distanceMeters >= 0 && distanceMeters <= radiusMeters;
 
-  Future<Map<String, Object?>> createOrder({required String customerName, String phone = '', String? customerId, required String itemsJson, required double total, DateTime? deliveryAt, DateTime? reminderAt, bool reminderEnabled = true, String note = ''}) async {
+  Future<Map<String, Object?>> createOrder({required String customerName, String phone = '', String? customerId, required String itemsJson, required double total, DateTime? deliveryAt, DateTime? reminderAt, bool reminderEnabled = true, String note = '', int? routePosition}) async {
     if (customerName.trim().isEmpty || total <= 0) throw ArgumentError('Customer name and a positive order total are required.');
     final id = uuid.v4();
     final now = DateTime.now().toIso8601String();
-    final row = <String, Object?>{'id': id, 'order_no': 'ORD-${DateTime.now().millisecondsSinceEpoch}', 'customer_id': customerId, 'customer_name': customerName.trim(), 'phone': phone.trim(), 'items_json': itemsJson, 'total': total, 'status': 'PENDING', 'order_at': now, 'delivery_at': deliveryAt?.toIso8601String(), 'reminder_at': reminderAt?.toIso8601String(), 'reminder_enabled': reminderEnabled ? 1 : 0, 'note': note.trim(), 'created_at': now, 'tracking_interval_seconds': 30, 'arrival_radius_meters': defaultArrivalRadiusMeters, 'call_unlocked': 0};
+    final existing = await db.query('orders', orderBy: 'route_position DESC');
+    final nextPosition = existing.isEmpty ? 1 : ((existing.first['route_position'] as num?)?.toInt() ?? existing.length) + 1;
+    final position = routePosition == null || routePosition < 1 ? nextPosition : routePosition;
+    final row = <String, Object?>{'id': id, 'order_no': 'ORD-${DateTime.now().millisecondsSinceEpoch}', 'customer_id': customerId, 'customer_name': customerName.trim(), 'phone': phone.trim(), 'items_json': itemsJson, 'total': total, 'status': 'PENDING', 'order_at': now, 'delivery_at': deliveryAt?.toIso8601String(), 'reminder_at': reminderAt?.toIso8601String(), 'reminder_enabled': reminderEnabled ? 1 : 0, 'note': note.trim(), 'created_at': now, 'tracking_interval_seconds': 30, 'arrival_radius_meters': defaultArrivalRadiusMeters, 'call_unlocked': 0, 'route_position': position, 'delivery_result': 'PENDING'};
     await db.insert('orders', row);
     await db.enqueueSync(entity: 'orders', entityId: id, operation: 'upsert', payload: row);
     await refresh();
@@ -562,11 +565,30 @@ class BusinessProvider extends ChangeNotifier {
   }
 
   Future<void> updateOrderStatus(String orderId, String status) async {
-    const allowed = {'PENDING', 'CONFIRMED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'};
+    const allowed = {'PENDING', 'CONFIRMED', 'OUT_FOR_DELIVERY', 'DELIVERY_ATTEMPTED', 'DELIVERED', 'CANCELLED'};
     if (!allowed.contains(status)) throw ArgumentError('Unsupported order status.');
     final updated = await db.update('orders', {'status': status}, orderId);
     if (updated == 0) throw StateError('Order was not found');
     await db.enqueueSync(entity: 'orders', entityId: orderId, operation: 'upsert', payload: {'id': orderId, 'status': status});
+    await refresh();
+  }
+
+  Future<void> updateRoutePosition(String orderId, int position) async {
+    if (position < 1) throw ArgumentError('Route stop must be 1 or higher');
+    final updated = await db.update('orders', {'route_position': position}, orderId);
+    if (updated == 0) throw StateError('Order was not found');
+    await db.enqueueSync(entity: 'orders', entityId: orderId, operation: 'upsert', payload: {'id': orderId, 'route_position': position});
+    await refresh();
+  }
+
+  Future<void> recordDeliveryOutcome({required String orderId, required bool delivered, String missingGoodsNote = ''}) async {
+    if (!delivered && missingGoodsNote.trim().isEmpty) throw ArgumentError('Enter the missing goods or delivery reason before saving');
+    final result = delivered ? 'DELIVERED' : 'NOT_DELIVERED';
+    final status = delivered ? 'DELIVERED' : 'DELIVERY_ATTEMPTED';
+    final row = <String, Object?>{'status': status, 'delivery_result': result, 'missing_goods_note': delivered ? null : missingGoodsNote.trim(), 'handover_at': DateTime.now().toIso8601String()};
+    final updated = await db.update('orders', row, orderId);
+    if (updated == 0) throw StateError('Order was not found');
+    await db.enqueueSync(entity: 'orders', entityId: orderId, operation: 'upsert', payload: {'id': orderId, ...row});
     await refresh();
   }
 

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../providers/business_provider.dart';
+import '../../services/delivery_route_service.dart';
 import '../../services/location_service.dart';
 import '../../services/order_notification_service.dart';
 import '../../services/role_permissions.dart';
@@ -23,6 +24,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
   final summary = TextEditingController();
   final total = TextEditingController();
   final note = TextEditingController();
+  final routePosition = TextEditingController();
   final notifications = OrderNotificationService();
   final deliveryTracking = DeliveryTrackingService();
   DateTime deliveryAt = DateTime.now().add(const Duration(hours: 1));
@@ -53,9 +55,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
     setState(() => busy = true);
     try {
-      final row = await widget.provider.createOrder(customerName: customer.text, phone: phone.text, itemsJson: jsonEncode([{'summary': summary.text.trim()}]), total: amount, deliveryAt: deliveryAt, reminderAt: reminderAt, reminderEnabled: reminderEnabled, note: note.text);
+      final row = await widget.provider.createOrder(customerName: customer.text, phone: phone.text, itemsJson: jsonEncode([{'summary': summary.text.trim()}]), total: amount, deliveryAt: deliveryAt, reminderAt: reminderAt, reminderEnabled: reminderEnabled, note: note.text, routePosition: int.tryParse(routePosition.text.trim()));
       if (reminderEnabled) await notifications.scheduleOrderReminder(orderId: '${row['id']}', customerName: '${row['customer_name']}', reminderAt: reminderAt, orderSummary: 'Order ${row['order_no']} · NPR ${amount.toStringAsFixed(2)}');
-      customer.clear(); phone.clear(); summary.clear(); total.clear(); note.clear();
+      customer.clear(); phone.clear(); summary.clear(); total.clear(); note.clear(); routePosition.clear();
       if (mounted) { setState(() {}); _notice('Order ${row['order_no']} saved'); }
     } catch (error) {
       _notice('Could not save order: $error');
@@ -170,6 +172,51 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
   }
 
+  Future<void> _openRouteInMaps(Map<String, Object?> order) async {
+    final latitude = (order['destination_latitude'] as num?)?.toDouble();
+    final longitude = (order['destination_longitude'] as num?)?.toDouble();
+    if (latitude == null || longitude == null) {
+      _notice('Capture the customer GPS location before opening the route.');
+      return;
+    }
+    final route = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$latitude,$longitude&travelmode=driving');
+    if (!await launchUrl(route, mode: LaunchMode.externalApplication)) _notice('Could not open Google Maps.');
+  }
+
+  Future<void> _recordHandover(Map<String, Object?> order, {required bool delivered}) async {
+    if (!RolePermissions.canRecordDeliveryOutcome(widget.role)) {
+      _notice('Your role cannot record delivery outcomes.');
+      return;
+    }
+    if (!DeliveryRouteService.canConfirmHandover(status: '${order['status'] ?? ''}', arrivalUnlocked: order['call_unlocked'] == 1)) {
+      _notice('Confirm handover after the delivery agent reaches the customer location and call unlocks.');
+      return;
+    }
+    final reason = TextEditingController(text: delivered ? '' : '${order['missing_goods_note'] ?? ''}');
+    final confirmed = await showDialog<bool>(context: context, builder: (dialogContext) => AlertDialog(
+      title: Text(delivered ? 'Confirm goods delivered?' : 'Goods not delivered / missing?'),
+      content: delivered ? const Text('This completes the delivery stop and cancels its pending order reminder.') : TextField(controller: reason, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Missing goods or reason', hintText: 'Milk not handed over, customer unavailable, item missing')),
+      actions: [TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: Text(delivered ? 'Confirm delivered' : 'Save reminder'))],
+    ));
+    if (confirmed != true) { reason.dispose(); return; }
+    try {
+      await widget.provider.recordDeliveryOutcome(orderId: '${order['id']}', delivered: delivered, missingGoodsNote: reason.text);
+      if (delivered) {
+        await notifications.cancelOrderReminder('${order['id']}');
+        await _stopTracking();
+        _notice('Stop completed and reminder cancelled.');
+      } else {
+        final reminderText = DeliveryRouteService.missingGoodsReminder(customerName: '${order['customer_name']}', items: '${order['items_json']}', reason: reason.text);
+        await notifications.scheduleOrderReminder(orderId: '${order['id']}', customerName: '${order['customer_name']}', reminderAt: DateTime.now().add(const Duration(minutes: 20)), orderSummary: reminderText, status: 'DELIVERY_ATTEMPTED');
+        _notice('Not-delivered reminder scheduled for 20 minutes from now.');
+      }
+    } catch (error) {
+      _notice('Could not record handover: $error');
+    } finally {
+      reason.dispose();
+    }
+  }
+
   void _notice(String text) {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
@@ -185,7 +232,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.all(16), children: [
+  Widget build(BuildContext context) {
+    final routeOrders = DeliveryRouteService.orderedStops(widget.provider.orders, agentId: widget.role == 'collector' ? widget.currentUserId : null);
+    return ListView(padding: const EdgeInsets.all(16), children: [
         Text('Orders & Delivery', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
         Text('Take orders offline, schedule reminders, assign delivery, and track arrival. Role: ${widget.role}'),
         const SizedBox(height: 12),
@@ -198,6 +247,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
           const SizedBox(height: 8),
           TextField(controller: total, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Order total (NPR)')),
           const SizedBox(height: 8),
+          TextField(controller: routePosition, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Route stop number (optional)', hintText: '1 for first house, 2 for second house')),
+          const SizedBox(height: 8),
           TextField(controller: note, maxLines: 2, decoration: const InputDecoration(labelText: 'Note (optional)')),
           const SizedBox(height: 8),
           ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.event), title: const Text('Delivery date and time'), subtitle: Text(_format(deliveryAt)), trailing: IconButton(icon: const Icon(Icons.edit_calendar), onPressed: () async { final picked = await _pickDateTime(deliveryAt); if (picked != null) setState(() => deliveryAt = picked); })),
@@ -207,27 +258,33 @@ class _OrdersScreenState extends State<OrdersScreen> {
         const SizedBox(height: 12),
         Text('Saved orders', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 6),
-        if (widget.provider.orders.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('No orders saved yet.'))),
-        ...widget.provider.orders.map((order) {
+        if (routeOrders.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('No active delivery stops.'))),
+        ...routeOrders.map((order) {
           final isTracking = trackingOrderId == '${order['id']}';
           final isAssigned = '${order['delivery_agent_id'] ?? ''}'.trim().isNotEmpty;
           final callReady = order['call_unlocked'] == 1;
           return Card(child: ListTile(
             leading: Icon(callReady ? Icons.phone_in_talk : (isAssigned ? Icons.local_shipping : Icons.receipt_long), color: callReady ? Colors.green : null),
-            title: Text('${order['order_no']} · ${order['customer_name']}'),
-            subtitle: Text('NPR ${order['total']} · ${order['status']}\nDelivery: ${order['delivery_at'] ?? 'Not scheduled'}\nAgent: ${isAssigned ? '${order['delivery_agent_name']} (${order['delivery_agent_phone'] ?? 'no phone'})' : 'Not assigned'}\nLocation: ${_locationText(order)}'),
-            isThreeLine: true,
+            title: Text('Stop ${order['route_position'] ?? '-'} · ${order['order_no']} · ${order['customer_name']}'),
+            subtitle: Text('NPR ${order['total']} · ${order['status']} · Result: ${order['delivery_result'] ?? 'PENDING'}\nDelivery: ${order['delivery_at'] ?? 'Not scheduled'}\nAgent: ${isAssigned ? '${order['delivery_agent_name']} (${order['delivery_agent_phone'] ?? 'no phone'})' : 'Not assigned'}\nLocation: ${_locationText(order)}${'${order['missing_goods_note'] ?? ''}'.trim().isEmpty ? '' : '\nPending: ${order['missing_goods_note']}'}'),
+            isThreeLine: false,
             trailing: PopupMenuButton<String>(onSelected: (value) {
               if (value == 'assign') _assignDeliveryAgent(order);
               if (value == 'track') _startTracking(order);
               if (value == 'stop') _stopTracking();
               if (value == 'call') _callCustomer(order);
+              if (value == 'maps') _openRouteInMaps(order);
+              if (value == 'handover:delivered') _recordHandover(order, delivered: true);
+              if (value == 'handover:not_delivered') _recordHandover(order, delivered: false);
               if (value.startsWith('status:')) _changeStatus(order, value.substring(7));
             }, itemBuilder: (_) => [
               if (RolePermissions.canAssignDelivery(widget.role)) const PopupMenuItem(value: 'assign', child: Text('Assign / change agent')),
               if (RolePermissions.canStartDeliveryTracking(widget.role) && isAssigned && '${order['delivery_agent_id'] ?? ''}' == widget.currentUserId.trim() && !isTracking) const PopupMenuItem(value: 'track', child: Text('Start live tracking')),
               if (isTracking) const PopupMenuItem(value: 'stop', child: Text('Stop live tracking')),
+              const PopupMenuItem(value: 'maps', child: Text('Open this stop in Google Maps')),
               if (RolePermissions.canCallCustomer(widget.role)) PopupMenuItem(value: 'call', child: Text(callReady ? 'Call customer (within 100 m)' : 'Call locked until arrival')),
+              if (RolePermissions.canRecordDeliveryOutcome(widget.role)) const PopupMenuItem(value: 'handover:delivered', child: Text('Confirm delivered / goods handed over')),
+              if (RolePermissions.canRecordDeliveryOutcome(widget.role)) const PopupMenuItem(value: 'handover:not_delivered', child: Text('Not delivered / missing goods reminder')),
               const PopupMenuItem(value: 'status:CONFIRMED', child: Text('Confirmed')),
               const PopupMenuItem(value: 'status:OUT_FOR_DELIVERY', child: Text('Out for delivery')),
               const PopupMenuItem(value: 'status:DELIVERED', child: Text('Delivered')),
@@ -236,7 +293,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
           ));
         }),
       ]);
+  }
 
   @override
-  void dispose() { unawaited(deliveryTracking.stop()); customer.dispose(); phone.dispose(); summary.dispose(); total.dispose(); note.dispose(); super.dispose(); }
+  void dispose() { unawaited(deliveryTracking.stop()); customer.dispose(); phone.dispose(); summary.dispose(); total.dispose(); note.dispose(); routePosition.dispose(); super.dispose(); }
 }

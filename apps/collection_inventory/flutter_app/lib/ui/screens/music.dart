@@ -323,6 +323,16 @@ class _MusicScreenState extends State<MusicScreen> {
         const SizedBox(height: 6),
         Text('Online streams, local audio, and personal playlists for ${widget.role}. YouTube remains inside the official player.'),
         const SizedBox(height: 12),
+        Card(
+          color: Theme.of(context).colorScheme.primaryContainer,
+          child: ListTile(
+            leading: const CircleAvatar(child: Icon(Icons.folder_open)),
+            title: const Text('Add music from phone files'),
+            subtitle: const Text('Choose your own MP3, M4A, WAV, AAC, or OGG file. It stays available in your personal playlist.'),
+            trailing: FilledButton.icon(onPressed: _addLocalFile, icon: const Icon(Icons.audio_file), label: const Text('Choose file')),
+          ),
+        ),
+        const SizedBox(height: 12),
         SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: playlists.keys.map((name) => Padding(padding: const EdgeInsets.only(right: 8), child: ChoiceChip(label: Text(name), selected: name == selectedPlaylist, onSelected: (_) async { selectedPlaylist = name; await _saveLibrary(); if (mounted) setState(() {}); }))).toList())),
         const SizedBox(height: 12),
         if (youtubeController != null) YoutubePlayer(controller: youtubeController!),
@@ -338,14 +348,14 @@ class _MusicScreenState extends State<MusicScreen> {
         ExpansionTile(
           initiallyExpanded: tracks.isEmpty,
           tilePadding: EdgeInsets.zero,
-          title: const Text('Add music'),
+          title: const Text('Add online music or stream'),
           subtitle: const Text('Use authorized streams or files you own/have permission to play'),
           children: [
             TextField(controller: title, decoration: const InputDecoration(labelText: 'Track title')),
             const SizedBox(height: 8),
             TextField(controller: source, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'YouTube URL or direct audio URL', prefixIcon: Icon(Icons.link))),
             const SizedBox(height: 8),
-            Wrap(spacing: 8, runSpacing: 8, children: [FilledButton.icon(onPressed: _addYoutube, icon: const Icon(Icons.ondemand_video), label: const Text('Add YouTube')), OutlinedButton.icon(onPressed: _addStream, icon: const Icon(Icons.wifi), label: const Text('Add stream')), OutlinedButton.icon(onPressed: _addLocalFile, icon: const Icon(Icons.audio_file), label: const Text('Choose MP3'))]),
+            Wrap(spacing: 8, runSpacing: 8, children: [FilledButton.icon(onPressed: _addYoutube, icon: const Icon(Icons.ondemand_video), label: const Text('Add YouTube')), OutlinedButton.icon(onPressed: _addStream, icon: const Icon(Icons.wifi), label: const Text('Add stream')), OutlinedButton.icon(onPressed: _addLocalFile, icon: const Icon(Icons.audio_file), label: const Text('Choose phone file'))]),
             const SizedBox(height: 8),
             OutlinedButton.icon(onPressed: _createPlaylist, icon: const Icon(Icons.create_new_folder), label: const Text('Create personal playlist')),
           ],
