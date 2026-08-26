@@ -513,7 +513,7 @@ class _MainShellState extends State<MainShell> {
                 onSelected: (value) { if (value == 'games') navigate(8); if (value == 'music') navigate(9); if (value == 'lucky_draw') navigate(10); if (value == 'orders') navigate(11); if (value == 'browser') navigate(12); if (value == 'loans') navigate(13); if (value == 'alarms') Navigator.of(context).push(MaterialPageRoute(builder: (_) => AlarmsScreen(p, role: widget.session.role))); if (value == 'logout') Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => LocalAuthGate(db: p.db)), (_) => false); if (value == 'settings') Navigator.of(context).push(MaterialPageRoute(builder: (_) => BiometricSettingsScreen(auth: LocalAuthService(p.db), session: widget.session))); if (value == 'users' && widget.session.role == 'admin') Navigator.of(context).push(MaterialPageRoute(builder: (_) => UsersScreen(p.db))); },
               itemBuilder: (_) => [
               const PopupMenuItem(value: 'games', child: Text('Daily progress & rewards')),
-              const PopupMenuItem(value: 'music', child: Text('YouTube Music')),
+              const PopupMenuItem(value: 'music', child: Text('Inbuilt Music Player')),
                 if (widget.session.role == 'admin') const PopupMenuItem(value: 'users', child: Text('Users & Roles')),
                 if (widget.session.role == 'admin') const PopupMenuItem(value: 'loans', child: Text('Loan accounts')),
               const PopupMenuItem(value: 'alarms', child: Text('Alarms & reminders')),

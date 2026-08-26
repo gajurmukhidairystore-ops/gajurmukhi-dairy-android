@@ -193,15 +193,16 @@
 - [ ] Build an embedded Admin-only AI Media Studio for branded social-media images, captions, offers, festival posts, WhatsApp Status content, and media drafts with channel/language selection, preview, confirmation, and native sharing.
 - [ ] Add an offline-first in-app alarm center for payments, farmer settlements, customer dues, loans, milk collection, deliveries, stock checks, and custom tasks, with date/time, repeat, priority, role visibility, Android notifications, snooze, completion, and history.
 - [ ] Add or verify an Admin setting for AI-generated Facebook and multi-channel social-media images and captions with native sharing
+- [x] Verify and enhance the inbuilt local music player with phone-file import, playlists, controls, background playback, and menu access
 - [x] Make the dashboard scanner a prominent one-tap camera action that directly inserts the scanned product into the active customer bill, with unknown-barcode and permission feedback
 - [x] Add practical operations enhancements: low-stock alerts, daily close summary, sync health, safer destructive actions, and faster dashboard shortcuts
 - [x] Add enhanced validation and audit visibility for billing, inventory, collections, payments, and reminder actions
 - [x] Trace and correct APK package, branding, build-source, and artifact delivery so the delivered app matches the unified Gajurmukhi One build
 - [x] Use the previously built unified Gajurmukhi One app as the update baseline and verify all requested latest workflows are included in the final APK
-- [ ] Repair two-phone sync reliability, account scoping, duplicate prevention, and pull/push conflict handling
-- [ ] Add home-screen payables and receivables summaries for farmers, parties, customers, and walk-in sales
-- [ ] Apply a green-and-white billing/POS colour system matching the supplied reference while preserving scan-to-bill and payment flows
-- [ ] Redesign the phone billing screen for narrow devices with a clear green-and-white layout, readable controls, and no clipped labels
-- [ ] Make Walking customer the automatic billing default, while allowing registered customers and parties to be selected
-- [ ] Present grocery, dairy, and other inventory items in one checkout bill with clear amounts and a prominent checkout/pay action
-- [ ] Add POS/thermal receipt output that prints a lucky-draw token when the completed purchase is at least NPR 1,000
+- [x] Repair two-phone sync reliability, account scoping, duplicate prevention, and pull/push conflict handling
+- [x] Add home-screen payables and receivables summaries for farmers, parties, customers, and walk-in sales
+- [x] Apply a green-and-white billing/POS colour system matching the supplied reference while preserving scan-to-bill and payment flows
+- [x] Redesign the phone billing screen for narrow devices with a clear green-and-white layout, readable controls, and no clipped labels
+- [x] Make Walking customer the automatic billing default, while allowing registered customers and parties to be selected
+- [x] Present grocery, dairy, and other inventory items in one checkout bill with clear amounts and a prominent checkout/pay action
+- [x] Add POS/thermal receipt output that prints a lucky-draw token when the completed purchase is at least NPR 1,000
