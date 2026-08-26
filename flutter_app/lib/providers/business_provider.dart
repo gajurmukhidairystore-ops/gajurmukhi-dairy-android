@@ -135,7 +135,8 @@ class BusinessProvider extends ChangeNotifier {
     final row = <String, Object?>{'latitude': latitude, 'longitude': longitude, 'location_accuracy': accuracy, 'location_captured_at': capturedAt};
     final updated = await db.update('customers', row, customerId);
     if (updated == 0) throw StateError('Customer was not found');
-    await db.enqueueSync(entity: 'customers', entityId: customerId, operation: 'upsert', payload: {'id': customerId, ...row});
+    final completeCustomer = (await db.query('customers', where: 'id=?', args: [customerId])).first;
+    await db.enqueueSync(entity: 'customers', entityId: customerId, operation: 'upsert', payload: Map<String, dynamic>.from(completeCustomer));
     await refresh();
   }
 

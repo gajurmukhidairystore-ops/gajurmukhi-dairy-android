@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gajurmukhi_dairy_business_pro/core/business_calculations.dart';
 import 'package:gajurmukhi_dairy_business_pro/services/sync_coordinator.dart';
+import 'package:gajurmukhi_dairy_business_pro/data/database.dart';
 import 'package:gajurmukhi_dairy_business_pro/services/whatsapp_service.dart';
 import 'package:gajurmukhi_dairy_business_pro/services/role_permissions.dart';
 import 'package:gajurmukhi_dairy_business_pro/services/location_service.dart';
@@ -234,6 +235,18 @@ void main() {
     expect(uri.host, 'wa.me');
     expect(uri.path, '/9779812345678');
     expect(uri.queryParameters['text'], 'Invoice total: NPR 250');
+  });
+
+  test('partial customer location cloud patches preserve required customer identity', () {
+    final merged = mergeCloudRow(
+      {'id': 'customer-1', 'name': 'Asha Rai', 'phone': '9800000000', 'address': 'Lalitpur'},
+      {'id': 'customer-1', 'latitude': 27.67, 'longitude': 85.32},
+      entity: 'customers',
+      recordId: 'customer-1',
+    );
+    expect(merged['name'], 'Asha Rai');
+    expect(merged['latitude'], 27.67);
+    expect(mergeCloudRow({}, {'id': 'customer-2', 'latitude': 27.67}, entity: 'customers', recordId: 'customer-2'), isEmpty);
   });
 
   test('sync report preserves the confirmed server cursor and pending retry count', () {

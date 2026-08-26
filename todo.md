@@ -222,7 +222,10 @@
 - [x] Add audit events for tracking-link creation, access, status changes, location updates, revocation, expiry, and missed-delivery contact actions
 - [x] Add Admin controls to view active tracking links and block, revoke, unblock, or reissue them with immediate location-stop behavior and audit history
 - [x] Create a fresh complete updated Android source and artifact package, with incremented version metadata, debug APK, release APK, release AAB, and phone-only installation guidance
-- [ ] Re-audit and harden all requested unified-app features together: two-phone sync, daily financial summaries, green-and-white POS, Walking Customer default, grocery/dairy/other checkout, receipts, lucky draw, barcode scan-to-bill, ledgers, payments, delivery tracking, AI, music, alarms, biometric login, and role permissions
-- [ ] Fix reported two-phone synchronization failures with idempotent cloud pulls, conflict-safe local edits, retry visibility, and cross-device verification
-- [ ] Fix home-screen farmer/party payables and customer/walking-customer receivables for today with correct stock, ledger, and payment effects
-- [ ] Rebuild and verify the requested green-and-white POS layout with customer selection, item categories, checkout, receipt printing, and lucky-draw token output
+- [x] Re-audit and harden all requested unified-app features together: two-phone sync, daily financial summaries, green-and-white POS, Walking Customer default, grocery/dairy/other checkout, receipts, lucky draw, barcode scan-to-bill, ledgers, payments, delivery tracking, AI, music, alarms, biometric login, and role permissions
+- [x] Fix reported two-phone synchronization failures with idempotent cloud pulls, conflict-safe local edits, retry visibility, and cross-device verification
+- [x] Fix home-screen farmer/party payables and customer/walking-customer receivables for today with correct stock, ledger, and payment effects
+- [x] Rebuild and verify the requested green-and-white POS layout with customer selection, item categories, checkout, receipt printing, and lucky-draw token output
+- [x] Provide and verify a simpler phone-downloadable delivery path for the fresh release APK after the GitHub Actions artifact could not be downloaded
+- [ ] Resolve the Android package-signature conflict shown on the user’s phone and provide a safe update or backup-and-reinstall path without avoidable local-data loss
+- [ ] Build a side-by-side installation variant with a new Android package ID so it does not conflict with the old signed app

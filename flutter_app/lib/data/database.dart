@@ -2,6 +2,13 @@ import 'dart:convert';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
+Map<String, Object?> mergeCloudRow(Map<String, Object?> existing, Map<String, dynamic> payload, {required String entity, required String recordId}) {
+  final row = <String, Object?>{...existing, ...payload};
+  row['id'] = row['id'] ?? recordId;
+  if (entity == 'customers' && (row['name'] == null || '${row['name']}'.trim().isEmpty)) return existing.isEmpty ? <String, Object?>{} : existing;
+  return row;
+}
+
 class AppDatabase {
   late Database db;
 
@@ -364,8 +371,10 @@ CREATE TABLE milk_collections(
       return;
     }
     if (operation != 'upsert') return;
-    final row = <String, Object?>{...payload};
-    row['id'] = row['id'] ?? recordId;
+    final existingRows = await db.query(entity, where: 'id=?', whereArgs: [recordId], limit: 1);
+    final existing = existingRows.isEmpty ? <String, Object?>{} : Map<String, Object?>.from(existingRows.first);
+    final row = mergeCloudRow(existing, payload, entity: entity, recordId: recordId);
+    if (row.isEmpty) return;
     await db.insert(entity, row, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
