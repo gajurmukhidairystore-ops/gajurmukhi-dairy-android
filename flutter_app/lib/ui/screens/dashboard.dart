@@ -234,6 +234,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: () => open(1), icon: const Icon(Icons.point_of_sale), label: const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text('SELL / OPEN BILLING', style: TextStyle(fontWeight: FontWeight.w800))))),
                         const SizedBox(height: 10),
                       ],
+                      if (widget.role == 'collector' || widget.role == 'admin') ...[
+                        Row(children: [
+                          Expanded(child: FilledButton.icon(onPressed: () => open(3), icon: const Icon(Icons.shopping_cart_checkout), label: const Text('BUY / RECEIVE'))),
+                          const SizedBox(width: 8),
+                          Expanded(child: OutlinedButton.icon(onPressed: () => open(3), icon: const Icon(Icons.add_box), label: const Text('ADD INVENTORY'))),
+                        ]),
+                        const SizedBox(height: 10),
+                      ],
                       if (lowStock.isNotEmpty) ...[
                         Card(
                           elevation: 0,

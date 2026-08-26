@@ -493,7 +493,7 @@ class _MainShellState extends State<MainShell> {
         if (mounted && pendingBarcode != null) setState(() => pendingBarcode = null);
       }),
       CustomersScreen(p),
-      StockScreen(p),
+      StockScreen(p, role: widget.session.role),
       DairyScreen(p, role: widget.session.role),
       ReportsScreen(p),
       AiScreen(p, role: widget.session.role),

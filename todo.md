@@ -232,12 +232,12 @@
 - [ ] Add fast shared sync status and retry behavior for Admin, Store, Collector, and Customer roles
 - [ ] Add secure role-scoped in-app messaging with offline queue and cloud delivery
 - [ ] Add permission-gated voice and video call session controls with privacy-safe participant access
-- [ ] Add monthly-settlement customer option with period billing, month-end statement, payments, reminders, and synced customer settings
-- [ ] Add Collector-created orders with Admin/Store pending reminders, Store-ready status, Collector delivery completion, and synchronized status messages
-- [ ] Add morning, afternoon, and evening welcome messages with the logged-in user name and role for every login path
-- [ ] Finish and cloud-verify direct Party/Customer ledger entries and monthly-settlement customer settings
-- [ ] Add and cloud-verify prominent Store Sell/Billing front-page access
+- [x] Add monthly-settlement customer option with period billing, month-end statement, payments, reminders, and synced customer settings
+- [x] Add Collector-created orders with Admin/Store pending reminders, Store-ready status, Collector delivery completion, and synchronized status messages
+- [x] Add morning, afternoon, and evening welcome messages with the logged-in user name and role for every login path
+- [x] Finish and cloud-verify direct Party/Customer ledger entries and monthly-settlement customer settings
+- [x] Add and cloud-verify prominent Store Sell/Billing front-page access
 - [ ] Add and cloud-verify Collector-only inventory intake, highlighted Sell/Buy/Add Inventory actions, and income/payable drill-downs
-- [ ] Add and cloud-verify Collector-created orders with Store-ready and delivery-complete messages
-- [ ] Complete and cloud-verify time-based welcome greetings after every login
+- [x] Add and cloud-verify Collector-created orders with Store-ready and delivery-complete messages
+- [x] Complete and cloud-verify time-based welcome greetings after every login
 - [ ] Decide and implement fast sync status plus role-scoped messaging and practical call controls

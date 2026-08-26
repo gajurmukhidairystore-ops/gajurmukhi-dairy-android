@@ -238,6 +238,14 @@ void main() {
     expect(uri.queryParameters['text'], 'Invoice total: NPR 250');
   });
 
+  test('role permissions protect inventory intake and order readiness', () {
+    expect(RolePermissions.canReceiveInventory('collector'), isTrue);
+    expect(RolePermissions.canReceiveInventory('shop'), isFalse);
+    expect(RolePermissions.canReceiveInventory('admin'), isFalse);
+    expect(RolePermissions.canMarkOrderReady('shop'), isTrue);
+    expect(RolePermissions.canMarkOrderReady('collector'), isFalse);
+  });
+
   test('welcome message follows local time and role for every login', () {
     expect(WelcomeService.message(time: DateTime(2026, 8, 26, 8), name: 'Ramesh', role: 'shop'), contains('Good morning, Ramesh · Store'));
     expect(WelcomeService.message(time: DateTime(2026, 8, 26, 14), name: 'Sita', role: 'collector'), contains('Good afternoon, Sita · Collector'));

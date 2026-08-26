@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../providers/business_provider.dart';
+import '../../services/role_permissions.dart';
 
 class StockScreen extends StatefulWidget {
   final BusinessProvider p;
-  const StockScreen(this.p, {super.key});
+  final String role;
+  const StockScreen(this.p, {super.key, this.role = 'admin'});
   @override State<StockScreen> createState() => _StockScreenState();
 }
 
@@ -11,6 +13,10 @@ class _StockScreenState extends State<StockScreen> {
   String filter = 'All';
 
   Future<void> addProduct() async {
+    if (!RolePermissions.canReceiveInventory(widget.role)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Only Collector can add new inventory items.')));
+      return;
+    }
     final name = TextEditingController();
     final price = TextEditingController();
     final stock = TextEditingController();
@@ -118,6 +124,10 @@ class _StockScreenState extends State<StockScreen> {
   }
 
   Future<void> adjust(Map<String, Object?> product) async {
+    if (!RolePermissions.canReceiveInventory(widget.role)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Only Collector can receive or add inventory stock.')));
+      return;
+    }
     final amount = TextEditingController();
     final purchaseCost = TextEditingController(text: '${product['purchase_price'] ?? ''}');
     String direction = 'IN';
@@ -144,7 +154,7 @@ class _StockScreenState extends State<StockScreen> {
     final products = widget.p.products.where((product) => filter == 'All' || '${product['category']}' == filter).toList();
     return Scaffold(
       body: ListView(padding: const EdgeInsets.all(12), children: [
-        Row(children: [const Expanded(child: Text('Inventory', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold))), FilledButton.icon(onPressed: addProduct, icon: const Icon(Icons.add_box), label: const Text('Add item'))]),
+        Row(children: [const Expanded(child: Text('Inventory', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold))), FilledButton.icon(onPressed: RolePermissions.canReceiveInventory(widget.role) ? addProduct : null, icon: const Icon(Icons.add_box), label: Text(RolePermissions.canReceiveInventory(widget.role) ? 'Add item' : 'Collector adds inventory'))]),
         const SizedBox(height: 4),
         const Text('Manage grocery, dairy, household, and other shop products.'),
         const SizedBox(height: 12),
@@ -179,7 +189,7 @@ class _StockScreenState extends State<StockScreen> {
                   IconButton(
                     tooltip: 'Sales or purchase return',
                     icon: const Icon(Icons.assignment_return_outlined),
-                    onPressed: () => recordReturnForProduct(x),
+                    onPressed: RolePermissions.canReceiveInventory(widget.role) ? () => recordReturnForProduct(x) : null,
                   ),
                   PopupMenuButton<String>(
                     onSelected: (value) { if (value == 'edit') editProduct(x); if (value == 'adjust') adjust(x); if (value == 'archive') archiveProduct(x); },
