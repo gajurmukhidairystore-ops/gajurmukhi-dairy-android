@@ -6,6 +6,7 @@ import '../services/lucky_draw_service.dart';
 import '../services/location_service.dart';
 import '../services/mobile_cloud_service.dart';
 import '../services/loan_calculator.dart';
+import '../services/role_permissions.dart';
 
 class BusinessProvider extends ChangeNotifier {
   final AppDatabase db;
@@ -678,9 +679,11 @@ class BusinessProvider extends ChangeNotifier {
     return row;
   }
 
-  Future<void> updateOrderStatus(String orderId, String status) async {
-    const allowed = {'PENDING', 'CONFIRMED', 'OUT_FOR_DELIVERY', 'DELIVERY_ATTEMPTED', 'DELIVERED', 'CANCELLED'};
+  Future<void> updateOrderStatus(String orderId, String status, {String role = 'admin'}) async {
+    const allowed = {'PENDING', 'CONFIRMED', 'READY', 'OUT_FOR_DELIVERY', 'DELIVERY_ATTEMPTED', 'DELIVERED', 'CANCELLED'};
     if (!allowed.contains(status)) throw ArgumentError('Unsupported order status.');
+    if (status == 'READY' && role != 'admin' && role != 'shop') throw StateError('Only Admin or Store can mark an order ready.');
+    if (status == 'DELIVERED' && role == 'collector' && !RolePermissions.canCompleteCollectorOrder(role)) throw StateError('Collector cannot complete this order.');
     final updated = await db.update('orders', {'status': status}, orderId);
     if (updated == 0) throw StateError('Order was not found');
     await db.enqueueSync(entity: 'orders', entityId: orderId, operation: 'upsert', payload: {'id': orderId, 'status': status});

@@ -21,4 +21,6 @@ class RolePermissions {
   static bool canStartDeliveryTracking(String role) => role == 'collector';
   static bool canCallCustomer(String role) => role == 'admin' || role == 'shop' || role == 'collector';
   static bool canRecordDeliveryOutcome(String role) => role == 'admin' || role == 'shop' || role == 'collector';
+  static bool canMarkOrderReady(String role) => role == 'admin' || role == 'shop';
+  static bool canCompleteCollectorOrder(String role) => role == 'collector';
 }

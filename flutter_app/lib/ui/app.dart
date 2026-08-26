@@ -10,6 +10,7 @@ import '../services/ai_command_service.dart';
 import '../services/mobile_cloud_service.dart';
 import '../services/local_auth_service.dart';
 import '../services/role_permissions.dart';
+import '../services/welcome_service.dart';
 import '../services/sync_coordinator.dart';
 import 'screens/ai.dart';
 import 'screens/billing.dart';
@@ -436,6 +437,9 @@ class _MainShellState extends State<MainShell> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final name = widget.session.name.trim().isEmpty ? widget.session.username : widget.session.name;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(WelcomeService.message(time: DateTime.now(), name: name, role: widget.session.role)), duration: const Duration(seconds: 4)));
       final cloud = MobileCloudService();
       if (await cloud.savedSession() != null && mounted) await syncCloud(context.read<BusinessProvider>());
     });
@@ -484,7 +488,7 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     final p = context.watch<BusinessProvider>();
     final screens = [
-      DashboardScreen(p, onNavigate: navigate, onScanToBill: scanFromDashboard),
+      DashboardScreen(p, onNavigate: navigate, onScanToBill: scanFromDashboard, role: widget.session.role),
       BillingScreen(p, initialBarcode: pendingBarcode, onInitialBarcodeConsumed: () {
         if (mounted && pendingBarcode != null) setState(() => pendingBarcode = null);
       }),
@@ -503,7 +507,7 @@ class _MainShellState extends State<MainShell> {
     ];
     const navigationTargets = [0, 5, 2, 4, 7];
     final selectedNavigationIndex = navigationTargets.indexOf(index);
-    final activeScreen = canAccess(index) ? screens[index] : DashboardScreen(p, onNavigate: navigate);
+    final activeScreen = canAccess(index) ? screens[index] : DashboardScreen(p, onNavigate: navigate, role: widget.session.role);
     return Scaffold(
       appBar: index == 0 ? null : AppBar(
         title: Text('${AppProfile.current.name} · ${widget.session.role.toUpperCase()}'),
@@ -518,7 +522,7 @@ class _MainShellState extends State<MainShell> {
                 if (widget.session.role == 'admin') const PopupMenuItem(value: 'loans', child: Text('Loan accounts')),
               const PopupMenuItem(value: 'alarms', child: Text('Alarms & reminders')),
               if (widget.session.role == 'admin' || widget.session.role == 'shop' || widget.session.role == 'customer') const PopupMenuItem(value: 'lucky_draw', child: Text('Monthly Lucky Draw')),
-              if (widget.session.role == 'admin' || widget.session.role == 'shop' || widget.session.role == 'customer') const PopupMenuItem(value: 'orders', child: Text('Orders & Reminders')),
+              if (widget.session.role == 'admin' || widget.session.role == 'shop' || widget.session.role == 'collector' || widget.session.role == 'customer') const PopupMenuItem(value: 'orders', child: Text('Orders & Reminders')),
               if (widget.session.role == 'admin' || widget.session.role == 'shop' || widget.session.role == 'collector' || widget.session.role == 'customer') const PopupMenuItem(value: 'browser', child: Text('In-app browser')),
               const PopupMenuItem(value: 'settings', child: Text('Device & business settings')),
               const PopupMenuItem(value: 'logout', child: Text('Sign out')),

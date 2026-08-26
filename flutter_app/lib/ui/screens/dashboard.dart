@@ -18,7 +18,8 @@ class DashboardScreen extends StatefulWidget {
   final BusinessProvider p;
   final ValueChanged<int>? onNavigate;
   final VoidCallback? onScanToBill;
-  const DashboardScreen(this.p, {super.key, this.onNavigate, this.onScanToBill});
+  final String role;
+  const DashboardScreen(this.p, {super.key, this.onNavigate, this.onScanToBill, this.role = 'admin'});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -229,6 +230,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
                       const SizedBox(height: 10),
+                      if (role == 'shop' || role == 'admin') ...[
+                        SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: () => open(1), icon: const Icon(Icons.point_of_sale), label: const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text('SELL / OPEN BILLING', style: TextStyle(fontWeight: FontWeight.w800))))),
+                        const SizedBox(height: 10),
+                      ],
                       if (lowStock.isNotEmpty) ...[
                         Card(
                           elevation: 0,

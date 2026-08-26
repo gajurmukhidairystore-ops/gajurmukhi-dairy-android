@@ -67,7 +67,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
     final value = double.tryParse(amount.text.trim()) ?? 0;
     if (ok == true && value > 0) {
       try {
-        await widget.p.recordDirectLedgerEntry(customerId: '${customer['id']}', amount: value, direction: direction, method: method, note: '${method} · ${note.text.trim()}');
+        await widget.p.recordDirectLedgerEntry(customerId: '${customer['id']}', amount: value, direction: direction, method: method, note: '$method · ${note.text.trim()}');
         if (mounted) ScaffoldMessenger.of(this.context).showSnackBar(const SnackBar(content: Text('Direct ledger entry saved')));
       } catch (error) {
         if (mounted) ScaffoldMessenger.of(this.context).showSnackBar(SnackBar(content: Text('Could not save direct ledger entry: $error')));
@@ -149,9 +149,11 @@ class _CustomersScreenState extends State<CustomersScreen> {
     if (result == null) return;
     try {
       await widget.p.updateMonthlyCustomer('${customer['id']}', enabled: result.$1, settlementDay: result.$2);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result.$1 ? 'Monthly settlement enabled' : 'Monthly settlement disabled')));
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result.$1 ? 'Monthly settlement enabled' : 'Monthly settlement disabled')));
     } catch (error) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save monthly setting: $error')));
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save monthly setting: $error')));
     }
   }
 

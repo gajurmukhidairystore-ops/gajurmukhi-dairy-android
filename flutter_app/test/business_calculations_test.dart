@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gajurmukhi_dairy_business_pro/core/business_calculations.dart';
 import 'package:gajurmukhi_dairy_business_pro/services/sync_coordinator.dart';
 import 'package:gajurmukhi_dairy_business_pro/data/database.dart';
+import 'package:gajurmukhi_dairy_business_pro/services/welcome_service.dart';
 import 'package:gajurmukhi_dairy_business_pro/services/whatsapp_service.dart';
 import 'package:gajurmukhi_dairy_business_pro/services/role_permissions.dart';
 import 'package:gajurmukhi_dairy_business_pro/services/location_service.dart';
@@ -235,6 +236,12 @@ void main() {
     expect(uri.host, 'wa.me');
     expect(uri.path, '/9779812345678');
     expect(uri.queryParameters['text'], 'Invoice total: NPR 250');
+  });
+
+  test('welcome message follows local time and role for every login', () {
+    expect(WelcomeService.message(time: DateTime(2026, 8, 26, 8), name: 'Ramesh', role: 'shop'), contains('Good morning, Ramesh · Store'));
+    expect(WelcomeService.message(time: DateTime(2026, 8, 26, 14), name: 'Sita', role: 'collector'), contains('Good afternoon, Sita · Collector'));
+    expect(WelcomeService.message(time: DateTime(2026, 8, 26, 20), name: '', role: 'admin'), contains('Good evening, there · Admin'));
   });
 
   test('partial customer location cloud patches preserve required customer identity', () {

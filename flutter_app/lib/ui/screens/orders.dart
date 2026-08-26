@@ -70,7 +70,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   Future<void> _changeStatus(Map<String, Object?> order, String status) async {
     try {
-      await widget.provider.updateOrderStatus('${order['id']}', status);
+      await widget.provider.updateOrderStatus('${order['id']}', status, role: widget.role);
       if (status == 'DELIVERED' || status == 'CANCELLED') await notifications.cancelOrderReminder('${order['id']}');
       if (status == 'DELIVERED' || status == 'CANCELLED') await _stopTracking();
     } catch (error) {
@@ -303,7 +303,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
               if (value == 'maps') _openRouteInMaps(order);
               if (value == 'handover:delivered') _recordHandover(order, delivered: true);
               if (value == 'handover:not_delivered') _recordHandover(order, delivered: false);
-              if (value.startsWith('status:')) _changeStatus(order, value.substring(7));
+              if (value == 'status:CONFIRMED') _changeStatus(order, value.substring(7));
             }, itemBuilder: (_) => [
               if (RolePermissions.canAssignDelivery(widget.role)) const PopupMenuItem(value: 'assign', child: Text('Assign / change agent')),
               if (RolePermissions.canStartDeliveryTracking(widget.role) && isAssigned && '${order['delivery_agent_id'] ?? ''}' == widget.currentUserId.trim() && !isTracking) const PopupMenuItem(value: 'track', child: Text('Start live tracking')),
@@ -319,6 +319,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
               if (RolePermissions.canCallCustomer(widget.role)) PopupMenuItem(value: 'call', child: Text(callReady ? 'Call customer (within 100 m)' : 'Call locked until arrival')),
               if (RolePermissions.canRecordDeliveryOutcome(widget.role)) const PopupMenuItem(value: 'handover:delivered', child: Text('Confirm delivered / goods handed over')),
               if (RolePermissions.canRecordDeliveryOutcome(widget.role)) const PopupMenuItem(value: 'handover:not_delivered', child: Text('Not delivered / missing goods reminder')),
+              if (RolePermissions.canMarkOrderReady(widget.role)) const PopupMenuItem(value: 'status:READY', child: Text('Mark order ready for Collector')),
+              if (widget.role == 'collector') const PopupMenuItem(value: 'status:DELIVERED', child: Text('Done · delivery complete')),
               const PopupMenuItem(value: 'status:CONFIRMED', child: Text('Confirmed')),
               const PopupMenuItem(value: 'status:OUT_FOR_DELIVERY', child: Text('Out for delivery')),
               const PopupMenuItem(value: 'status:DELIVERED', child: Text('Delivered')),
