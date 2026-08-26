@@ -119,6 +119,7 @@ class _StockScreenState extends State<StockScreen> {
 
   Future<void> adjust(Map<String, Object?> product) async {
     final amount = TextEditingController();
+    final purchaseCost = TextEditingController(text: '${product['purchase_price'] ?? ''}');
     String direction = 'IN';
     final ok = await showDialog<bool>(context: context, builder: (_) => StatefulBuilder(builder: (context, setDialogState) => AlertDialog(
       title: Text('Adjust ${product['name']} stock'),
@@ -126,12 +127,16 @@ class _StockScreenState extends State<StockScreen> {
         DropdownButtonFormField<String>(initialValue: direction, items: const [DropdownMenuItem(value: 'IN', child: Text('Add stock / purchase')), DropdownMenuItem(value: 'OUT', child: Text('Remove stock / damage'))], onChanged: (v) => setDialogState(() => direction = v ?? 'IN')),
         const SizedBox(height: 10),
         TextField(controller: amount, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Quantity')),
+        const SizedBox(height: 10),
+        if (direction == 'IN') TextField(controller: purchaseCost, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Purchase cost per unit (NPR)')),
       ]),
       actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Save'))],
     )));
     final value = double.tryParse(amount.text) ?? 0;
-    if (ok == true && value > 0) await widget.p.adjustStock('${product['id']}', direction == 'IN' ? value : -value, direction == 'IN' ? 'Stock received' : 'Stock removed');
+    final cost = double.tryParse(purchaseCost.text.trim()) ?? 0;
+    if (ok == true && value > 0) await widget.p.adjustStock('${product['id']}', direction == 'IN' ? value : -value, direction == 'IN' ? 'Party purchase / stock received' : 'Stock removed', unitCost: direction == 'IN' && cost > 0 ? cost : null);
     amount.dispose();
+    purchaseCost.dispose();
   }
 
   @override

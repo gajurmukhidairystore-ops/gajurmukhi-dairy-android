@@ -335,7 +335,14 @@ CREATE TABLE milk_collections(
       db.delete(table, where: 'id=?', whereArgs: [id]);
 
   Future<void> enqueueSync({required String entity, required String entityId, required String operation, required Map<String, dynamic> payload}) async {
-    await db.insert('sync_queue', {'id': '${DateTime.now().microsecondsSinceEpoch}-$entityId', 'entity': entity, 'entity_id': entityId, 'operation': operation, 'payload': jsonEncode(payload), 'created_at': DateTime.now().toIso8601String(), 'synced': 0});
+    final existing = await db.query('sync_queue', where: 'entity=? AND entity_id=? AND synced=0', whereArgs: [entity, entityId], orderBy: 'created_at ASC', limit: 1);
+    final now = DateTime.now().toUtc().toIso8601String();
+    final row = {'entity': entity, 'entity_id': entityId, 'operation': operation, 'payload': jsonEncode(payload), 'created_at': now, 'synced': 0};
+    if (existing.isNotEmpty) {
+      await db.db.update('sync_queue', row, where: 'id=?', whereArgs: [existing.first['id']]);
+    } else {
+      await db.insert('sync_queue', {'id': '${DateTime.now().microsecondsSinceEpoch}-$entity-$entityId', ...row});
+    }
   }
 
   Future<List<Map<String, Object?>>> pendingSync() => db.query('sync_queue', where: 'synced=0', orderBy: 'created_at ASC');
@@ -424,6 +431,7 @@ CREATE TABLE milk_collections(
     final todayWalkInDue = await db.rawQuery("SELECT COALESCE(SUM(due),0) v FROM invoices WHERE customer_id IS NULL AND due > 0 AND date(created_at)=date('now','localtime')");
     final todayCustomerDue = await db.rawQuery("SELECT COALESCE(SUM(due),0) v FROM invoices WHERE customer_id IS NOT NULL AND due > 0 AND date(created_at)=date('now','localtime')");
     final todayPartyPaid = await db.rawQuery("SELECT COALESCE(SUM(amount),0) v FROM payments WHERE date(created_at)=date('now','localtime')");
+    final todayPartyPurchase = await db.rawQuery("SELECT COALESCE(SUM(ABS(qty) * unit_cost),0) v FROM stock_movements WHERE type='ADJUSTMENT_IN' AND date(created_at)=date('now','localtime')");
     return {
       'farmerPayable': ((farmerPayable.first['v'] as num?) ?? 0).clamp(0, double.infinity),
       'partyPayable': partyPayable.first['v'] as num,
@@ -433,6 +441,7 @@ CREATE TABLE milk_collections(
       'todayWalkInDue': todayWalkInDue.first['v'] as num,
       'todayCustomerDue': todayCustomerDue.first['v'] as num,
       'todayPartyPaid': todayPartyPaid.first['v'] as num,
+      'todayPartyPurchase': todayPartyPurchase.first['v'] as num,
     };
   }
 }

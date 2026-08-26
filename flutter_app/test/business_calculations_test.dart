@@ -235,4 +235,17 @@ void main() {
     expect(uri.path, '/9779812345678');
     expect(uri.queryParameters['text'], 'Invoice total: NPR 250');
   });
+
+  test('sync report preserves the confirmed server cursor and pending retry count', () {
+    final cursor = DateTime.utc(2026, 8, 26, 12, 30);
+    final report = SyncReport(received: 4, serverTime: cursor, pendingAfterPush: 2);
+    expect(report.received, 4);
+    expect(report.serverTime, cursor);
+    expect(report.pendingAfterPush, 2);
+  });
+
+  test('POS defaults remain eligible for walking-customer checkout and lucky draw threshold', () {
+    expect(LuckyDrawService.isEligiblePurchase(1000), isTrue);
+    expect(BusinessCalculations.due(total: 1250, paid: 0), 1250);
+  });
 }

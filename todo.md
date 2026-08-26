@@ -222,3 +222,7 @@
 - [x] Add audit events for tracking-link creation, access, status changes, location updates, revocation, expiry, and missed-delivery contact actions
 - [x] Add Admin controls to view active tracking links and block, revoke, unblock, or reissue them with immediate location-stop behavior and audit history
 - [x] Create a fresh complete updated Android source and artifact package, with incremented version metadata, debug APK, release APK, release AAB, and phone-only installation guidance
+- [ ] Re-audit and harden all requested unified-app features together: two-phone sync, daily financial summaries, green-and-white POS, Walking Customer default, grocery/dairy/other checkout, receipts, lucky draw, barcode scan-to-bill, ledgers, payments, delivery tracking, AI, music, alarms, biometric login, and role permissions
+- [ ] Fix reported two-phone synchronization failures with idempotent cloud pulls, conflict-safe local edits, retry visibility, and cross-device verification
+- [ ] Fix home-screen farmer/party payables and customer/walking-customer receivables for today with correct stock, ledger, and payment effects
+- [ ] Rebuild and verify the requested green-and-white POS layout with customer selection, item categories, checkout, receipt printing, and lucky-draw token output

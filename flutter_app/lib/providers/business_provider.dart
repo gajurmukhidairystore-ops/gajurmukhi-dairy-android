@@ -156,7 +156,7 @@ class BusinessProvider extends ChangeNotifier {
     await refresh();
   }
 
-  Future<void> adjustStock(String productId, double delta, String note) async {
+  Future<void> adjustStock(String productId, double delta, String note, {double? unitCost}) async {
     Map<String, Object?>? product;
     for (final row in products) {
       if ('${row['id']}' == productId) { product = row; break; }
@@ -166,7 +166,7 @@ class BusinessProvider extends ChangeNotifier {
     final next = (current + delta).clamp(0, double.infinity).toDouble();
     await db.db.rawUpdate('UPDATE products SET stock=? WHERE id=?', [next, productId]);
     final movementId = uuid.v4();
-    final movement = {'id': movementId, 'product_id': productId, 'type': delta > 0 ? 'ADJUSTMENT_IN' : 'ADJUSTMENT_OUT', 'qty': delta, 'unit_cost': product['purchase_price'] ?? 0, 'note': note, 'created_at': DateTime.now().toIso8601String()};
+    final movement = {'id': movementId, 'product_id': productId, 'type': delta > 0 ? 'ADJUSTMENT_IN' : 'ADJUSTMENT_OUT', 'qty': delta, 'unit_cost': unitCost ?? product['purchase_price'] ?? 0, 'note': note, 'created_at': DateTime.now().toIso8601String()};
     await db.insert('stock_movements', movement);
     await db.enqueueSync(entity: 'stock_movements', entityId: movementId, operation: 'upsert', payload: movement);
     await refresh();

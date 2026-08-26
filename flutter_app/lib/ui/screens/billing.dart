@@ -45,7 +45,7 @@ class _BillingScreenState extends State<BillingScreen> {
   String lastSavedDiscountReason = '';
   String lastSavedPayment = 'CASH';
   String lastSavedQrStatus = 'not_applicable';
-  String lastSavedCustomerName = 'Walk-in Customer';
+  String lastSavedCustomerName = 'Walking Customer';
   String lastSavedCustomerPhone = '';
 
   @override
@@ -198,7 +198,7 @@ class _BillingScreenState extends State<BillingScreen> {
     lastSavedDiscountReason = discountReason.text.trim();
     lastSavedPayment = payment;
     lastSavedQrStatus = qrStatus;
-    lastSavedCustomerName = '${customerById(selectedCustomerId)?['name'] ?? 'Walk-in Customer'}';
+    lastSavedCustomerName = '${customerById(selectedCustomerId)?['name'] ?? 'Walking Customer'}';
     lastSavedCustomerPhone = customerPhone.text.trim();
     lastLuckyToken = null;
     await widget.p.createInvoice(customerId: selectedCustomerId, items: cart, discount: discount, discountReason: discountReason.text.trim(), paid: paid, paymentMethod: payment, qrStatus: qrStatus, taxRate: taxRate, paymentSplits: payment == 'SPLIT' ? paymentTenders : const []);
@@ -322,7 +322,7 @@ class _BillingScreenState extends State<BillingScreen> {
     final message = WhatsAppService.dailyTransactionMessage(
       invoiceNumber: usingSavedBill ? 'SAVED-${DateTime.now().millisecondsSinceEpoch}' : 'DRAFT-${DateTime.now().millisecondsSinceEpoch}',
       date: DateTime.now(),
-      customerName: usingSavedBill ? lastSavedCustomerName : '${customerById(selectedCustomerId)?['name'] ?? 'Walk-in Customer'}',
+      customerName: usingSavedBill ? lastSavedCustomerName : '${customerById(selectedCustomerId)?['name'] ?? 'Walking Customer'}',
       customerPhone: (usingSavedBill ? lastSavedCustomerPhone : customerPhone.text.trim()).isEmpty ? null : (usingSavedBill ? lastSavedCustomerPhone : customerPhone.text.trim()),
       items: sourceCart.map((item) => <String, Object?>{'name': item['name'], 'quantity': item['qty'], 'unitPrice': item['price']}).toList(),
       subtotal: usingSavedBill ? lastSavedSubtotal : subtotal,
@@ -487,7 +487,7 @@ class _BillingScreenState extends State<BillingScreen> {
                     initialValue: selectedCustomerId,
                     isExpanded: true,
                     decoration: const InputDecoration(labelText: 'Customer / party'),
-                    hint: const Text('Walk-in customer'),
+                    hint: const Text('Walking Customer'),
                     items: widget.p.customers
                         .map((customer) => DropdownMenuItem<String>(value: '${customer['id']}', child: Text('${customer['name']}')))
                         .toList(),
@@ -522,7 +522,7 @@ class _BillingScreenState extends State<BillingScreen> {
                             final svc = PrintingService();
                             await svc.printA4(
                               invoiceNo: saved ? 'SAVED-${DateTime.now().millisecondsSinceEpoch}' : 'PREVIEW',
-                              customer: saved ? lastSavedCustomerName : 'Walk-in Customer',
+                              customer: saved ? lastSavedCustomerName : 'Walking Customer',
                               items: items,
                               total: saved ? lastSavedTotal : total,
                               paid: saved ? lastSavedPaid : paid,
@@ -544,7 +544,7 @@ class _BillingScreenState extends State<BillingScreen> {
                             final items = saved ? lastSavedCart : cart;
                             await PrintingService().printPos(
                               invoiceNo: saved ? 'SAVED-${DateTime.now().millisecondsSinceEpoch}' : 'PREVIEW',
-                              customer: saved ? lastSavedCustomerName : 'Walk-in Customer',
+                              customer: saved ? lastSavedCustomerName : 'Walking Customer',
                               items: items,
                               total: saved ? lastSavedTotal : total,
                               paid: saved ? lastSavedPaid : paid,

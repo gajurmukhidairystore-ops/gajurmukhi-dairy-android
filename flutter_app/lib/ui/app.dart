@@ -470,10 +470,10 @@ class _MainShellState extends State<MainShell> {
       final prefs = await SharedPreferences.getInstance();
       final savedCursor = DateTime.tryParse(prefs.getString('gajurmukhi_cloud_sync_cursor') ?? '');
       final since = savedCursor?.subtract(const Duration(minutes: 2));
-      final received = await AuthenticatedSyncCoordinator(db: provider.db, cloud: cloud, session: session).syncNow(since: since);
-      await prefs.setString('gajurmukhi_cloud_sync_cursor', DateTime.now().toUtc().toIso8601String());
+      final report = await AuthenticatedSyncCoordinator(db: provider.db, cloud: cloud, session: session).syncNow(since: since);
+      await prefs.setString('gajurmukhi_cloud_sync_cursor', report.serverTime.toIso8601String());
       await provider.refresh();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Cloud sync complete. $received shared updates received.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(report.pendingAfterPush == 0 ? 'Cloud sync complete. ${report.received} shared updates received.' : 'Sync partial: ${report.pendingAfterPush} local changes will retry. ${report.received} shared updates received.')));
     } catch (error) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Cloud sync could not complete: $error')));
     }

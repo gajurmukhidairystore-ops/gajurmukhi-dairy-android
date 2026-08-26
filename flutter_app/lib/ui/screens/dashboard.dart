@@ -34,8 +34,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   num get received => p.totals['collection'] ?? 0;
   num get due => p.totals['due'] ?? 0;
   num get farmerPayableToday => (((p.financialSummary['todayMilkPayable'] ?? 0) - (p.financialSummary['todayFarmerPaid'] ?? 0)).clamp(0, double.infinity));
-  num get partyPayable => p.financialSummary['partyPayable'] ?? 0;
-  num get customerReceivable => p.financialSummary['customerReceivable'] ?? 0;
+  num get partyPayable => p.financialSummary['todayPartyPurchase'] ?? 0;
+  num get customerReceivable => p.financialSummary['todayCustomerDue'] ?? 0;
   num get walkInReceivableToday => p.financialSummary['todayWalkInDue'] ?? 0;
   List<Map<String, Object?>> get lowStock => lowStockItems(p.products);
   num get milkInventory => p.products.where((product) => '${product['name'] ?? ''}'.toLowerCase() == 'milk 1 ltr').fold<num>(0, (sum, product) => sum + ((product['stock'] as num?) ?? 0));
@@ -131,7 +131,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             padding: EdgeInsets.zero,
             children: [
               Container(
-                color: const Color(0xff1976e8),
+                color: const Color(0xff145c43),
                 padding: const EdgeInsets.fromLTRB(16, 18, 16, 20),
                 child: SafeArea(
                   bottom: false,
@@ -191,13 +191,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Row(children: [
                         Expanded(child: _MoneyCard(icon: Icons.arrow_upward_rounded, label: 'Pay farmers today', value: farmerPayableToday, color: const Color(0xffb34b42), subtitle: 'Milk less payments')),
                         const SizedBox(width: 8),
-                        Expanded(child: _MoneyCard(icon: Icons.storefront_outlined, label: 'Pay parties', value: partyPayable, color: const Color(0xffb34b42), subtitle: 'Outstanding purchases')),
+                        Expanded(child: _MoneyCard(icon: Icons.storefront_outlined, label: 'Pay parties today', value: partyPayable, color: const Color(0xffb34b42), subtitle: 'Goods received today at cost')),
                       ]),
                       const SizedBox(height: 8),
                       Row(children: [
-                        Expanded(child: _MoneyCard(icon: Icons.arrow_downward_rounded, label: 'Receive customers', value: customerReceivable, color: const Color(0xff16834b), subtitle: 'Registered customer dues')),
+                        Expanded(child: _MoneyCard(icon: Icons.arrow_downward_rounded, label: 'Receive customers today', value: customerReceivable, color: const Color(0xff16834b), subtitle: 'Registered customer bills due')),
                         const SizedBox(width: 8),
-                        Expanded(child: _MoneyCard(icon: Icons.shopping_bag_outlined, label: 'Walk-in due today', value: walkInReceivableToday, color: const Color(0xff16834b), subtitle: 'Unpaid walk-in bills')),
+                        Expanded(child: _MoneyCard(icon: Icons.shopping_bag_outlined, label: 'Receive walking customer', value: walkInReceivableToday, color: const Color(0xff16834b), subtitle: 'Unpaid walking-customer bills')),
                       ]),
                       const SizedBox(height: 10),
                       SizedBox(
@@ -205,7 +205,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         child: Card(
                           margin: EdgeInsets.zero,
                           elevation: 0,
-                          color: const Color(0xff176acb),
+                          color: const Color(0xff145c43),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                           child: InkWell(
                             borderRadius: BorderRadius.circular(18),
@@ -341,7 +341,7 @@ class _SummaryCard extends StatelessWidget {
               Row(
                 children: [
                   _Metric(label: 'Milk', value: '${milk.toStringAsFixed(1)} L', color: const Color(0xff20252c)),
-                  _Metric(label: 'Amount', value: 'NPR${amount.toStringAsFixed(0)}', color: const Color(0xff176acb)),
+                  _Metric(label: 'Amount', value: 'NPR${amount.toStringAsFixed(0)}', color: const Color(0xff145c43)),
                   _Metric(label: 'Due', value: 'NPR${due.toStringAsFixed(0)}', color: const Color(0xffd64d4d)),
                 ],
               ),

@@ -38,21 +38,32 @@ class SyncCoordinator {
   Future<Map<String, dynamic>> pullSince(DateTime since) => cloud.pull(since.toUtc().toIso8601String());
 }
 
+class SyncReport {
+  final int received;
+  final DateTime serverTime;
+  final int pendingAfterPush;
+  const SyncReport({required this.received, required this.serverTime, required this.pendingAfterPush});
+}
+
 class AuthenticatedSyncCoordinator {
   final AppDatabase db;
   final MobileCloudService cloud;
   final CloudSession session;
   AuthenticatedSyncCoordinator({required this.db, required this.cloud, required this.session});
 
-  Future<int> syncNow({DateTime? since}) async {
-    final pending = await db.pendingSync();
-    if (pending.isNotEmpty) {
-      final response = await cloud.push(session.token, pending.map((row) => buildSyncEnvelope(Map<String, dynamic>.from(row))).toList());
+  Future<SyncReport> syncNow({DateTime? since}) async {
+    var pending = await db.pendingSync();
+    while (pending.isNotEmpty) {
+      final batch = pending.take(200).toList();
+      final response = await cloud.push(session.token, batch.map((row) => buildSyncEnvelope(Map<String, dynamic>.from(row))).toList());
       final accepted = (response['accepted'] as List? ?? const []).map((value) => '$value').toSet();
-      for (final row in pending) {
+      for (final row in batch) {
         if (accepted.contains('${row['id']}')) await db.markSynced('${row['id']}');
       }
+      if (accepted.isEmpty) break;
+      pending = await db.pendingSync();
     }
+    final pendingAfterPush = pending.length;
     final pull = await cloud.pull(session.token, since ?? DateTime.fromMillisecondsSinceEpoch(0));
     final records = (pull['records'] as List? ?? const []);
     for (final raw in records) {
@@ -64,6 +75,7 @@ class AuthenticatedSyncCoordinator {
         payload: Map<String, dynamic>.from(record['payload'] as Map? ?? const {}),
       );
     }
-    return records.length;
+    final serverTime = DateTime.tryParse('${pull['serverTime'] ?? ''}')?.toUtc() ?? DateTime.now().toUtc();
+    return SyncReport(received: records.length, serverTime: serverTime, pendingAfterPush: pendingAfterPush);
   }
 }
