@@ -97,7 +97,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     : '${row['invoice_no'] ?? row['reference_no'] ?? ''} · ${row['method'] ?? row['payment_method'] ?? ''}';
                         return ListTile(
                           contentPadding: EdgeInsets.zero,
-                          leading: CircleAvatar(backgroundColor: color.withOpacity(.12), foregroundColor: color, child: Icon(kind.contains('payable') ? Icons.arrow_upward : Icons.arrow_downward)),
+                          leading: CircleAvatar(backgroundColor: color.withValues(alpha: .12), foregroundColor: color, child: Icon(kind.contains('payable') ? Icons.arrow_upward : Icons.arrow_downward)),
                           title: Text(party, style: const TextStyle(fontWeight: FontWeight.w700)),
                           subtitle: Text('$secondary\n${row['created_at'] ?? ''}'),
                           isThreeLine: true,
@@ -437,7 +437,7 @@ class _SyncStatusCard extends StatelessWidget {
     final detail = error ?? (pending > 0 ? '$pending change${pending == 1 ? '' : 's'} will retry automatically.' : _lastSyncLabel());
     return Card(
       elevation: 0,
-      color: color.withOpacity(.09),
+      color: color.withValues(alpha: .09),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
