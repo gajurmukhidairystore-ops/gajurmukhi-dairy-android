@@ -377,7 +377,6 @@ class _BillingScreenState extends State<BillingScreen> {
           ),
         ),
       ),
-    ),
     Flexible(
               flex: 4,
               fit: FlexFit.loose,
