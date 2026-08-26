@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import '../lib/services/alarm_service.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:gajurmukhi_dairy_business_pro/services/alarm_service.dart';
 
 void main() {
   test('alarm repeat rules map to Android calendar components', () {

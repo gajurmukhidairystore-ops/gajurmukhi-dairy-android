@@ -68,15 +68,59 @@ class _AlarmsScreenState extends State<AlarmsScreen> {
   Future<void> _snooze(Map<String, Object?> alarm) async { await widget.p.snoozeAlarm('${alarm['id']}', const Duration(minutes: 20)); final until = DateTime.now().add(const Duration(minutes: 20)); await scheduler.schedule(id: '${alarm['id']}', title: '${alarm['title']}', body: '${alarm['notes'] ?? ''}', dueAt: until, category: '${alarm['category'] ?? 'CUSTOM'}'); if (mounted) setState(() {}); }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Alarms & reminders'), actions: [IconButton(onPressed: () => setState(() => showHistory = !showHistory), tooltip: showHistory ? 'Show active alarms' : 'Show completed history', icon: Icon(showHistory ? Icons.alarm : Icons.history))]),
-    body: ListView(padding: const EdgeInsets.all(16), children: [
-      Card(color: Theme.of(context).colorScheme.primaryContainer, child: const Padding(padding: EdgeInsets.all(16), child: Text('Set reminders for payments, farmer settlements, customer dues, loans, milk collection, deliveries, stock checks, or any custom task. Android notifications use Kathmandu local time.'))),
-      const SizedBox(height: 12),
-      if (widget.role == 'admin') FilledButton.icon(onPressed: _addAlarm, icon: const Icon(Icons.add_alarm), label: const Text('Set new alarm')),
-      const SizedBox(height: 12),
-      if (visibleAlarms.isEmpty) Center(child: Padding(padding: const EdgeInsets.all(32), child: Text(showHistory ? 'No completed alarms yet.' : 'No active alarms.'))),
-      ...visibleAlarms.map((alarm) => Card(child: ListTile(leading: Icon(alarm['priority'] == 'HIGH' ? Icons.priority_high : Icons.alarm, color: alarm['priority'] == 'HIGH' ? Colors.red : null), title: Text('${alarm['title']}'), subtitle: Text('${alarm['category']} · ${DateTime.parse('${alarm['due_at']}').toLocal()}\n${alarm['notes'] ?? ''}'), isThreeLine: true, trailing: showHistory ? const Icon(Icons.check_circle, color: Colors.green) : PopupMenuButton<String>(onSelected: (value) { if (value == 'done') _complete(alarm); if (value == 'snooze') _snooze(alarm); }, itemBuilder: (_) => const [PopupMenuItem(value: 'snooze', child: Text('Snooze 20 minutes')), PopupMenuItem(value: 'done', child: Text('Mark completed'))]))),
-    ],
-  );
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Alarms & reminders'),
+        actions: [
+          IconButton(
+            onPressed: () => setState(() => showHistory = !showHistory),
+            tooltip: showHistory ? 'Show active alarms' : 'Show completed history',
+            icon: Icon(showHistory ? Icons.alarm : Icons.history),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Card(
+            color: Theme.of(context).colorScheme.primaryContainer,
+            child: const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Set reminders for payments, farmer settlements, customer dues, loans, milk collection, deliveries, stock checks, or any custom task. Android notifications use Kathmandu local time.'),
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (widget.role == 'admin') FilledButton.icon(onPressed: _addAlarm, icon: const Icon(Icons.add_alarm), label: const Text('Set new alarm')),
+          const SizedBox(height: 12),
+          if (visibleAlarms.isEmpty)
+            Center(child: Padding(padding: const EdgeInsets.all(32), child: Text(showHistory ? 'No completed alarms yet.' : 'No active alarms.'))),
+          ...visibleAlarms.map((alarm) {
+            final priority = '${alarm['priority'] ?? ''}';
+            final dueAt = DateTime.tryParse('${alarm['due_at']}')?.toLocal();
+            return Card(
+              child: ListTile(
+                leading: Icon(priority == 'HIGH' ? Icons.priority_high : Icons.alarm, color: priority == 'HIGH' ? Colors.red : null),
+                title: Text('${alarm['title']}'),
+                subtitle: Text('${alarm['category']} · ${dueAt ?? alarm['due_at']}\n${alarm['notes'] ?? ''}'),
+                isThreeLine: true,
+                trailing: showHistory
+                    ? const Icon(Icons.check_circle, color: Colors.green)
+                    : PopupMenuButton<String>(
+                        onSelected: (value) {
+                          if (value == 'done') _complete(alarm);
+                          if (value == 'snooze') _snooze(alarm);
+                        },
+                        itemBuilder: (_) => const [
+                          PopupMenuItem(value: 'snooze', child: Text('Snooze 20 minutes')),
+                          PopupMenuItem(value: 'done', child: Text('Mark completed')),
+                        ],
+                      ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
 }
