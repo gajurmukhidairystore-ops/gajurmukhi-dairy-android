@@ -339,7 +339,7 @@ CREATE TABLE milk_collections(
     final now = DateTime.now().toUtc().toIso8601String();
     final row = {'entity': entity, 'entity_id': entityId, 'operation': operation, 'payload': jsonEncode(payload), 'created_at': now, 'synced': 0};
     if (existing.isNotEmpty) {
-      await db.db.update('sync_queue', row, where: 'id=?', whereArgs: [existing.first['id']]);
+      await db.update('sync_queue', row, where: 'id=?', whereArgs: [existing.first['id']]);
     } else {
       await db.insert('sync_queue', {'id': '${DateTime.now().microsecondsSinceEpoch}-$entity-$entityId', ...row});
     }
