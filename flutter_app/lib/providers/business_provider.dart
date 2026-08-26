@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../data/database.dart';
 import '../services/lucky_draw_service.dart';
 import '../services/location_service.dart';
+import '../services/mobile_cloud_service.dart';
 import '../services/loan_calculator.dart';
 
 class BusinessProvider extends ChangeNotifier {
@@ -697,6 +698,25 @@ class BusinessProvider extends ChangeNotifier {
     await refresh();
   }
 
+  Future<Map<String, Object?>> createSecureTrackingLink({required String orderId, int expiresInMinutes = 180}) async {
+    final rows = await db.query('orders', where: 'id=?', args: [orderId]);
+    if (rows.isEmpty) throw StateError('Order was not found');
+    final order = rows.first;
+    final response = await MobileCloudService().createTrackingLink(deliveryLabel: '${order['order_no'] ?? orderId} · ${order['customer_name'] ?? 'Delivery'}', orderId: orderId, customerName: '${order['customer_name'] ?? ''}', customerPhone: '${order['phone'] ?? ''}', expiresInMinutes: expiresInMinutes);
+    final sessionId = '${response['id'] ?? ''}'; final path = '${response['path'] ?? ''}'; final url = path.startsWith('http') ? path : '${MobileCloudService.baseUrl}$path';
+    if (sessionId.isEmpty || path.isEmpty) throw StateError('Cloud returned an invalid tracking link');
+    final changes = <String, Object?>{'tracking_session_id': sessionId, 'tracking_url': url, 'tracking_status': 'ACTIVE', 'tracking_expires_at': '${response['expiresAt'] ?? ''}', 'tracking_blocked': 0, 'tracking_last_cloud_update': DateTime.now().toIso8601String()};
+    await db.update('orders', changes, orderId); await db.enqueueSync(entity: 'orders', entityId: orderId, operation: 'upsert', payload: {'id': orderId, ...changes}); await refresh();
+    return {...order, ...changes};
+  }
+  Future<void> setSecureTrackingStatus({required String orderId, required String status}) async {
+    const allowed = {'ACTIVE', 'PAUSED', 'ENDED', 'BLOCKED'}; if (!allowed.contains(status)) throw ArgumentError('Unsupported tracking status');
+    final rows = await db.query('orders', where: 'id=?', args: [orderId]); if (rows.isEmpty) throw StateError('Order was not found');
+    final order = rows.first; final sessionId = '${order['tracking_session_id'] ?? ''}'.trim(); if (sessionId.isEmpty) throw StateError('Create a secure tracking link first');
+    await MobileCloudService().updateTrackingStatus(id: sessionId, status: status.toLowerCase());
+    final changes = <String, Object?>{'tracking_status': status, 'tracking_blocked': status == 'BLOCKED' ? 1 : 0, 'tracking_last_cloud_update': DateTime.now().toIso8601String()};
+    await db.update('orders', changes, orderId); await db.enqueueSync(entity: 'orders', entityId: orderId, operation: 'upsert', payload: {'id': orderId, ...changes}); await refresh();
+  }
   Future<void> unassignDeliveryAgent(String orderId) async {
     final row = <String, Object?>{'delivery_agent_id': null, 'delivery_agent_name': null, 'delivery_agent_phone': null, 'last_driver_latitude': null, 'last_driver_longitude': null, 'last_driver_accuracy': null, 'last_driver_at': null, 'driver_distance_meters': null, 'call_unlocked': 0, 'call_unlocked_at': null, 'call_attempted_at': null};
     final updated = await db.update('orders', row, orderId);

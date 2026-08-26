@@ -7,7 +7,7 @@ class AppDatabase {
 
   Future<void> init({String? path}) async {
     final p = path ?? join(await getDatabasesPath(), 'gajurmukhi_pro.db');
-    db = await openDatabase(p, version: 17, onCreate: _create, onUpgrade: _upgrade);
+    db = await openDatabase(p, version: 18, onCreate: _create, onUpgrade: _upgrade);
   }
 
   Future<void> _create(Database db, int version) async {
@@ -198,7 +198,9 @@ CREATE TABLE milk_collections(
         arrival_radius_meters REAL DEFAULT 100, call_unlocked INTEGER DEFAULT 0,
         call_unlocked_at TEXT, call_attempted_at TEXT,
         route_position INTEGER, delivery_result TEXT DEFAULT 'PENDING',
-        missing_goods_note TEXT, handover_at TEXT
+        missing_goods_note TEXT, handover_at TEXT,
+        tracking_session_id TEXT, tracking_url TEXT, tracking_status TEXT DEFAULT 'NOT_STARTED', tracking_expires_at TEXT,
+        tracking_blocked INTEGER DEFAULT 0, tracking_last_cloud_update TEXT
       )
     ''');
     await db.execute('''
@@ -312,6 +314,14 @@ CREATE TABLE milk_collections(
     if (oldV < 17) {
       await db.execute('''CREATE TABLE alarms(id TEXT PRIMARY KEY, title TEXT NOT NULL, category TEXT NOT NULL, notes TEXT, due_at TEXT NOT NULL, repeat_rule TEXT NOT NULL DEFAULT 'ONCE', priority TEXT NOT NULL DEFAULT 'NORMAL', target_role TEXT NOT NULL DEFAULT 'admin', enabled INTEGER DEFAULT 1, completed_at TEXT, snoozed_until TEXT, created_at TEXT NOT NULL)''');
     }
+    if (oldV < 18) {
+      await db.execute('ALTER TABLE orders ADD COLUMN tracking_session_id TEXT');
+      await db.execute('ALTER TABLE orders ADD COLUMN tracking_url TEXT');
+      await db.execute("ALTER TABLE orders ADD COLUMN tracking_status TEXT DEFAULT 'NOT_STARTED'");
+      await db.execute('ALTER TABLE orders ADD COLUMN tracking_expires_at TEXT');
+      await db.execute('ALTER TABLE orders ADD COLUMN tracking_blocked INTEGER DEFAULT 0');
+      await db.execute('ALTER TABLE orders ADD COLUMN tracking_last_cloud_update TEXT');
+    }
   }
 
   Future<List<Map<String,Object?>>> query(String table, {String? where, List<Object?>? args, String? orderBy}) =>
@@ -364,7 +374,7 @@ CREATE TABLE milk_collections(
     for (final table in snapshotTables) {
       tables[table] = await db.query(table);
     }
-    return jsonEncode({'format': 'gajurmukhi-offline-backup', 'schema_version': 17, 'exported_at': DateTime.now().toUtc().toIso8601String(), 'tables': tables});
+    return jsonEncode({'format': 'gajurmukhi-offline-backup', 'schema_version': 18, 'exported_at': DateTime.now().toUtc().toIso8601String(), 'tables': tables});
   }
 
   Future<void> importJson(String source) async {

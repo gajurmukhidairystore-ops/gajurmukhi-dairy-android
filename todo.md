@@ -206,3 +206,18 @@
 - [x] Make Walking customer the automatic billing default, while allowing registered customers and parties to be selected
 - [x] Present grocery, dairy, and other inventory items in one checkout bill with clear amounts and a prominent checkout/pay action
 - [x] Add POS/thermal receipt output that prints a lucky-draw token when the completed purchase is at least NPR 1,000
+- [ ] Add opt-in delivery-start notifications for selected customers/parties and staff, with email/Gmail and in-app notification options
+- [ ] Add consent-based live delivery location sharing with a time-limited Google Maps or map-link tracking page and stop-sharing control
+- [ ] Synchronize delivery-start status, recipients, location session, and stop time safely across two phones
+- [ ] Add visible delivery statuses: Started, Paused, Completed, Ended, and Missed/Not delivered
+- [ ] Notify selected customers, parties, staff, and Admin when delivery is paused, ended, completed, or marked missed
+- [ ] Show a private Call business contact action for missed deliveries using the configured business phone number
+- [ ] Add consent-based stop-sharing and time-limited live-location controls for delivery recipients
+- [ ] Create a private browser tracking page link for active deliveries, with live map position, delivery status, last-updated time, expiry, and approved call contact
+- [ ] Stop or expire the tracking link when delivery is paused, ended, completed, or sharing is manually stopped
+- [ ] Brand the browser tracking page with the supplied Gajurmukhi Dairy & Store logo, green-and-white palette, Value for Life tagline, and business identity
+- [ ] Add a below-map advertising panel with free-delivery message, dairy/store promotion, social/order links, and prominent Call to Order action
+- [ ] Implement high-security delivery tracking links with cryptographically random access tokens, hashed server storage, expiry, revocation, recipient scoping, and rate limiting
+- [ ] Add security controls preventing public indexing, exposing unrelated orders, leaking precise contact data, or continuing location updates after stop-sharing
+- [ ] Add audit events for tracking-link creation, access, status changes, location updates, revocation, expiry, and missed-delivery contact actions
+- [ ] Add Admin controls to view active tracking links and block, revoke, unblock, or reissue them with immediate location-stop behavior and audit history

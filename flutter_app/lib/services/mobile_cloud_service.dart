@@ -97,6 +97,18 @@ class MobileCloudService {
     return SocialMediaDraft.fromJson(body);
   }
 
+  Future<Map<String, dynamic>> createTrackingLink({required String deliveryLabel, String? orderId, String? customerName, String? customerPhone, int expiresInMinutes = 180}) async {
+    final session = await savedSession(); if (session == null) throw StateError('Sign in to the shared cloud before issuing a tracking link.');
+    return _post('/api/mobile/tracking/create', {'deliveryLabel': deliveryLabel, 'orderId': orderId, 'customerName': customerName, 'customerPhone': customerPhone, 'expiresInMinutes': expiresInMinutes}, token: session.token);
+  }
+  Future<Map<String, dynamic>> updateTrackingStatus({required String id, required String status}) async {
+    final session = await savedSession(); if (session == null) throw StateError('Sign in to the shared cloud before changing tracking access.');
+    return _post('/api/mobile/tracking/status', {'id': id, 'status': status}, token: session.token);
+  }
+  Future<Map<String, dynamic>> updateTrackingLocation({required String id, required double latitude, required double longitude, double? accuracyMeters}) async {
+    final session = await savedSession(); if (session == null) throw StateError('Sign in to the shared cloud before updating delivery location.');
+    return _post('/api/mobile/tracking/location', {'id': id, 'latitude': latitude, 'longitude': longitude, 'accuracyMeters': accuracyMeters}, token: session.token);
+  }
   Future<Map<String, dynamic>> pull(String token, DateTime since) => _get('/api/mobile/sync/pull?since=${Uri.encodeQueryComponent(since.toUtc().toIso8601String())}', token: token);
 
   Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> payload, {String? token}) async {

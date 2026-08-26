@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../providers/business_provider.dart';
 import '../../services/delivery_route_service.dart';
 import '../../services/location_service.dart';
+import '../../services/mobile_cloud_service.dart';
 import '../../services/order_notification_service.dart';
 import '../../services/role_permissions.dart';
 
@@ -127,6 +129,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
     final started = await deliveryTracking.start(destinationLatitude: destinationLatitude, destinationLongitude: destinationLongitude, onUpdate: (position, _) async {
       try {
         await widget.provider.recordDriverLocation(orderId: orderId, agentId: agentId, latitude: position.latitude, longitude: position.longitude, accuracy: position.accuracy);
+        final sessionId = '${order['tracking_session_id'] ?? ''}'.trim();
+        if (sessionId.isNotEmpty) await MobileCloudService().updateTrackingLocation(id: sessionId, latitude: position.latitude, longitude: position.longitude, accuracyMeters: position.accuracy);
       } catch (error) {
         _notice('Location update failed: $error');
       }
@@ -144,6 +148,22 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
   }
 
+  Future<void> _createSecureTrackingLink(Map<String, Object?> order) async {
+    if (widget.role != 'admin') { _notice('Only Admin can issue a secure tracking link.'); return; }
+    try {
+      final result = await widget.provider.createSecureTrackingLink(orderId: '${order['id']}');
+      final url = '${result['tracking_url'] ?? ''}'; if (url.isNotEmpty) await Clipboard.setData(ClipboardData(text: url));
+      _notice('Secure tracking link created and copied.');
+    } catch (error) { _notice('Could not create secure tracking link: $error'); }
+  }
+  Future<void> _setSecureTrackingStatus(Map<String, Object?> order, String status) async {
+    if (widget.role != 'admin') { _notice('Only Admin can change tracking access.'); return; }
+    try { await widget.provider.setSecureTrackingStatus(orderId: '${order['id']}', status: status); _notice('Tracking access changed to $status.'); } catch (error) { _notice('Could not update tracking access: $error'); }
+  }
+  Future<void> _copyTrackingLink(Map<String, Object?> order) async {
+    final url = '${order['tracking_url'] ?? ''}'.trim(); if (url.isEmpty) { _notice('Create a secure tracking link first.'); return; }
+    await Clipboard.setData(ClipboardData(text: url)); _notice('Secure tracking link copied.');
+  }
   Future<void> _stopTracking() async {
     await deliveryTracking.stop();
     if (mounted && trackingOrderId != null) setState(() => trackingOrderId = null);
@@ -266,12 +286,19 @@ class _OrdersScreenState extends State<OrdersScreen> {
           return Card(child: ListTile(
             leading: Icon(callReady ? Icons.phone_in_talk : (isAssigned ? Icons.local_shipping : Icons.receipt_long), color: callReady ? Colors.green : null),
             title: Text('Stop ${order['route_position'] ?? '-'} · ${order['order_no']} · ${order['customer_name']}'),
-            subtitle: Text('NPR ${order['total']} · ${order['status']} · Result: ${order['delivery_result'] ?? 'PENDING'}\nDelivery: ${order['delivery_at'] ?? 'Not scheduled'}\nAgent: ${isAssigned ? '${order['delivery_agent_name']} (${order['delivery_agent_phone'] ?? 'no phone'})' : 'Not assigned'}\nLocation: ${_locationText(order)}${'${order['missing_goods_note'] ?? ''}'.trim().isEmpty ? '' : '\nPending: ${order['missing_goods_note']}'}'),
+            subtitle: Text('NPR ${order['total']} · ${order['status']} · Result: ${order['delivery_result'] ?? 'PENDING'}\nDelivery: ${order['delivery_at'] ?? 'Not scheduled'}\nAgent: ${isAssigned ? '${order['delivery_agent_name']} (${order['delivery_agent_phone'] ?? 'no phone'})' : 'Not assigned'}\nLocation: ${_locationText(order)}${'${order['missing_goods_note'] ?? ''}'.trim().isEmpty ? '' : '\nPending: ${order['missing_goods_note']}'}${'${order['tracking_url'] ?? ''}'.trim().isEmpty ? '' : '\nBrowser tracking: ${order['tracking_status'] ?? 'ACTIVE'} · expires ${order['tracking_expires_at'] ?? 'configured time'}'}'),
             isThreeLine: false,
             trailing: PopupMenuButton<String>(onSelected: (value) {
               if (value == 'assign') _assignDeliveryAgent(order);
               if (value == 'track') _startTracking(order);
               if (value == 'stop') _stopTracking();
+              if (value == 'secure_create') _createSecureTrackingLink(order);
+              if (value == 'secure_copy') _copyTrackingLink(order);
+              if (value == 'secure_block') _setSecureTrackingStatus(order, 'BLOCKED');
+              if (value == 'secure_unblock') _setSecureTrackingStatus(order, 'ACTIVE');
+              if (value == 'secure_pause') _setSecureTrackingStatus(order, 'PAUSED');
+              if (value == 'secure_resume') _setSecureTrackingStatus(order, 'ACTIVE');
+              if (value == 'secure_end') _setSecureTrackingStatus(order, 'ENDED');
               if (value == 'call') _callCustomer(order);
               if (value == 'maps') _openRouteInMaps(order);
               if (value == 'handover:delivered') _recordHandover(order, delivered: true);
@@ -281,6 +308,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
               if (RolePermissions.canAssignDelivery(widget.role)) const PopupMenuItem(value: 'assign', child: Text('Assign / change agent')),
               if (RolePermissions.canStartDeliveryTracking(widget.role) && isAssigned && '${order['delivery_agent_id'] ?? ''}' == widget.currentUserId.trim() && !isTracking) const PopupMenuItem(value: 'track', child: Text('Start live tracking')),
               if (isTracking) const PopupMenuItem(value: 'stop', child: Text('Stop live tracking')),
+              if (widget.role == 'admin' && '${order['tracking_url'] ?? ''}'.trim().isEmpty) const PopupMenuItem(value: 'secure_create', child: Text('Create secure browser tracking link')),
+              if (widget.role == 'admin' && '${order['tracking_url'] ?? ''}'.trim().isNotEmpty) ...[
+                const PopupMenuItem(value: 'secure_copy', child: Text('Copy secure tracking link')),
+                if ('${order['tracking_status'] ?? 'NOT_STARTED'}' == 'BLOCKED') const PopupMenuItem(value: 'secure_unblock', child: Text('Unblock tracking link')) else const PopupMenuItem(value: 'secure_block', child: Text('Block tracking link now')),
+                if ('${order['tracking_status'] ?? ''}' == 'PAUSED') const PopupMenuItem(value: 'secure_resume', child: Text('Resume browser tracking')) else const PopupMenuItem(value: 'secure_pause', child: Text('Pause browser tracking')),
+                if ('${order['tracking_status'] ?? ''}' != 'ENDED') const PopupMenuItem(value: 'secure_end', child: Text('End browser tracking')),
+              ],
               const PopupMenuItem(value: 'maps', child: Text('Open this stop in Google Maps')),
               if (RolePermissions.canCallCustomer(widget.role)) PopupMenuItem(value: 'call', child: Text(callReady ? 'Call customer (within 100 m)' : 'Call locked until arrival')),
               if (RolePermissions.canRecordDeliveryOutcome(widget.role)) const PopupMenuItem(value: 'handover:delivered', child: Text('Confirm delivered / goods handed over')),
