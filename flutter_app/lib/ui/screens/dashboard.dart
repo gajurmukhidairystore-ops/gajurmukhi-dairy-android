@@ -33,6 +33,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   num get amount => p.totals['sales'] ?? 0;
   num get received => p.totals['collection'] ?? 0;
   num get due => p.totals['due'] ?? 0;
+  num get farmerPayableToday => (((p.financialSummary['todayMilkPayable'] ?? 0) - (p.financialSummary['todayFarmerPaid'] ?? 0)).clamp(0, double.infinity));
+  num get partyPayable => p.financialSummary['partyPayable'] ?? 0;
+  num get customerReceivable => p.financialSummary['customerReceivable'] ?? 0;
+  num get walkInReceivableToday => p.financialSummary['todayWalkInDue'] ?? 0;
   List<Map<String, Object?>> get lowStock => lowStockItems(p.products);
   num get milkInventory => p.products.where((product) => '${product['name'] ?? ''}'.toLowerCase() == 'milk 1 ltr').fold<num>(0, (sum, product) => sum + ((product['stock'] as num?) ?? 0));
 
@@ -183,6 +187,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       const SizedBox(height: 6),
                       _SummaryCard(milk: milk, amount: amount, due: due, received: received),
+                      const SizedBox(height: 10),
+                      Row(children: [
+                        Expanded(child: _MoneyCard(icon: Icons.arrow_upward_rounded, label: 'Pay farmers today', value: farmerPayableToday, color: const Color(0xffb34b42), subtitle: 'Milk less payments')),
+                        const SizedBox(width: 8),
+                        Expanded(child: _MoneyCard(icon: Icons.storefront_outlined, label: 'Pay parties', value: partyPayable, color: const Color(0xffb34b42), subtitle: 'Outstanding purchases')),
+                      ]),
+                      const SizedBox(height: 8),
+                      Row(children: [
+                        Expanded(child: _MoneyCard(icon: Icons.arrow_downward_rounded, label: 'Receive customers', value: customerReceivable, color: const Color(0xff16834b), subtitle: 'Registered customer dues')),
+                        const SizedBox(width: 8),
+                        Expanded(child: _MoneyCard(icon: Icons.shopping_bag_outlined, label: 'Walk-in due today', value: walkInReceivableToday, color: const Color(0xff16834b), subtitle: 'Unpaid walk-in bills')),
+                      ]),
                       const SizedBox(height: 10),
                       SizedBox(
                         width: double.infinity,
@@ -341,6 +357,34 @@ class _SummaryCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      );
+}
+
+class _MoneyCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final num value;
+  final Color color;
+  final String subtitle;
+  const _MoneyCard({required this.icon, required this.label, required this.value, required this.color, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) => Card(
+        elevation: 0,
+        color: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(icon, color: color, size: 21),
+            const SizedBox(height: 6),
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: Colors.black54)),
+            const SizedBox(height: 3),
+            Text('NPR ${value.toStringAsFixed(0)}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: color)),
+            const SizedBox(height: 2),
+            Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, color: Colors.black45)),
+          ]),
         ),
       );
 }

@@ -18,6 +18,7 @@ class BusinessProvider extends ChangeNotifier {
   List<Map<String,Object?>> loans = [];
   List<Map<String,Object?>> alarms = [];
   Map<String,num> totals = {};
+  Map<String,num> financialSummary = {};
   List<Map<String,Object?>> luckyDraws = [];
   List<Map<String,Object?>> luckyDrawPrizes = [];
   List<Map<String,Object?>> luckyDrawTokens = [];
@@ -45,6 +46,7 @@ class BusinessProvider extends ChangeNotifier {
     loans = await db.query('loans', where: 'active=1', orderBy: 'start_date DESC');
     alarms = await db.query('alarms', orderBy: 'due_at ASC');
     totals = await db.totals();
+    financialSummary = await db.financialSummary();
     luckyDraws = await db.query('lucky_draws', orderBy: 'created_at DESC');
     luckyDrawPrizes = await db.query('lucky_draw_prizes', orderBy: 'prize_rank ASC');
     luckyDrawTokens = await db.query('lucky_draw_tokens', orderBy: 'created_at DESC');
@@ -292,7 +294,8 @@ class BusinessProvider extends ChangeNotifier {
       await txn.rawUpdate('UPDATE products SET stock=stock+? WHERE id=?', [litres, productId]);
       await txn.insert('stock_movements', movement);
     });
-    if (createdProduct) await db.enqueueSync(entity: 'products', entityId: productId, operation: 'upsert', payload: product);
+    final syncedProduct = (await db.query('products', where: 'id=?', args: [productId])).first;
+    await db.enqueueSync(entity: 'products', entityId: productId, operation: 'upsert', payload: Map<String, dynamic>.from(syncedProduct));
     await db.enqueueSync(entity: 'milk_collections', entityId: id, operation: 'upsert', payload: row);
     await db.enqueueSync(entity: 'stock_movements', entityId: movementId, operation: 'upsert', payload: movement);
     await refresh();
@@ -321,35 +324,37 @@ class BusinessProvider extends ChangeNotifier {
   }
 
   Future<void> recordAdvance(String? customerId, double amount, String method, String note) async {
+    if (amount <= 0) throw ArgumentError('Advance amount must be greater than zero');
     final now = DateTime.now().toIso8601String();
     final id = uuid.v4();
-    await db.insert('advances', {
-      'id': id, 'customer_id': customerId, 'amount': amount,
-      'method': method, 'note': note, 'created_at': now
-    });
+    final advance = <String, Object?>{'id': id, 'customer_id': customerId, 'amount': amount, 'method': method, 'note': note, 'created_at': now};
+    await db.insert('advances', advance);
+    await db.enqueueSync(entity: 'advances', entityId: id, operation: 'upsert', payload: Map<String, dynamic>.from(advance));
     if (customerId != null) {
       await db.db.rawUpdate('UPDATE customers SET balance=balance-? WHERE id=?', [amount, customerId]);
-      await db.insert('ledger', {
-        'id': uuid.v4(), 'customer_id': customerId, 'type': 'ADVANCE',
-        'amount': amount, 'reference_id': id, 'note': note, 'created_at': now
-      });
+      final ledger = <String, Object?>{'id': uuid.v4(), 'customer_id': customerId, 'type': 'ADVANCE', 'amount': amount, 'reference_id': id, 'note': note, 'created_at': now};
+      await db.insert('ledger', ledger);
+      await db.enqueueSync(entity: 'ledger', entityId: '${ledger['id']}', operation: 'upsert', payload: Map<String, dynamic>.from(ledger));
+      final customer = (await db.query('customers', where: 'id=?', args: [customerId])).first;
+      await db.enqueueSync(entity: 'customers', entityId: customerId, operation: 'upsert', payload: Map<String, dynamic>.from(customer));
     }
     await refresh();
   }
 
   Future<void> recordPayment(String? customerId, double amount, String method, String note) async {
+    if (amount <= 0) throw ArgumentError('Payment amount must be greater than zero');
     final now = DateTime.now().toIso8601String();
     final id = uuid.v4();
-    await db.insert('payments', {
-      'id': id, 'customer_id': customerId, 'amount': amount,
-      'method': method, 'note': note, 'created_at': now
-    });
+    final payment = <String, Object?>{'id': id, 'customer_id': customerId, 'amount': amount, 'method': method, 'note': note, 'created_at': now};
+    await db.insert('payments', payment);
+    await db.enqueueSync(entity: 'payments', entityId: id, operation: 'upsert', payload: Map<String, dynamic>.from(payment));
     if (customerId != null) {
       await db.db.rawUpdate('UPDATE customers SET balance=balance-? WHERE id=?', [amount, customerId]);
-      await db.insert('ledger', {
-        'id': uuid.v4(), 'customer_id': customerId, 'type': 'PAYMENT',
-        'amount': amount, 'reference_id': id, 'note': note, 'created_at': now
-      });
+      final ledger = <String, Object?>{'id': uuid.v4(), 'customer_id': customerId, 'type': 'PAYMENT', 'amount': amount, 'reference_id': id, 'note': note, 'created_at': now};
+      await db.insert('ledger', ledger);
+      await db.enqueueSync(entity: 'ledger', entityId: '${ledger['id']}', operation: 'upsert', payload: Map<String, dynamic>.from(ledger));
+      final customer = (await db.query('customers', where: 'id=?', args: [customerId])).first;
+      await db.enqueueSync(entity: 'customers', entityId: customerId, operation: 'upsert', payload: Map<String, dynamic>.from(customer));
     }
     await refresh();
   }
@@ -470,7 +475,28 @@ class BusinessProvider extends ChangeNotifier {
         });
       }
     });
-    await db.enqueueSync(entity: 'invoices', entityId: id, operation: 'upsert', payload: {'id': id, 'invoice_no': no, 'customer_id': customerId, 'subtotal': subtotal, 'discount': discount, 'discount_reason': discountReason.trim(), 'tax': tax, 'tax_rate': taxRate, 'total': total, 'paid': paid, 'due': due, 'payment_method': paymentMethod, 'status': due <= 0 ? 'PAID' : 'CREDIT', 'qr_status': qrStatus, 'items': items, 'payment_splits': paymentSplits});
+    final invoice = <String, dynamic>{'id': id, 'invoice_no': no, 'customer_id': customerId, 'subtotal': subtotal, 'discount': discount, 'discount_reason': discountReason.trim(), 'tax': tax, 'tax_rate': taxRate, 'total': total, 'paid': paid, 'due': due, 'payment_method': paymentMethod, 'status': due <= 0 ? 'PAID' : 'CREDIT', 'qr_status': qrStatus, 'created_at': now};
+    await db.enqueueSync(entity: 'invoices', entityId: id, operation: 'upsert', payload: invoice);
+    for (final item in await db.query('invoice_items', where: 'invoice_id=?', args: [id])) {
+      await db.enqueueSync(entity: 'invoice_items', entityId: '${item['id']}', operation: 'upsert', payload: Map<String, dynamic>.from(item));
+    }
+    for (final movement in await db.query('stock_movements', where: 'reference_id=?', args: [id])) {
+      await db.enqueueSync(entity: 'stock_movements', entityId: '${movement['id']}', operation: 'upsert', payload: Map<String, dynamic>.from(movement));
+    }
+    for (final split in await db.query('payment_splits', where: 'invoice_id=?', args: [id])) {
+      await db.enqueueSync(entity: 'payment_splits', entityId: '${split['id']}', operation: 'upsert', payload: Map<String, dynamic>.from(split));
+    }
+    if (customerId != null) {
+      final customer = (await db.query('customers', where: 'id=?', args: [customerId])).first;
+      await db.enqueueSync(entity: 'customers', entityId: customerId, operation: 'upsert', payload: Map<String, dynamic>.from(customer));
+      for (final ledger in await db.query('ledger', where: 'reference_id=?', args: [id])) {
+        await db.enqueueSync(entity: 'ledger', entityId: '${ledger['id']}', operation: 'upsert', payload: Map<String, dynamic>.from(ledger));
+      }
+    }
+    for (final item in items) {
+      final product = (await db.query('products', where: 'id=?', args: ['${item['productId']}'])).first;
+      await db.enqueueSync(entity: 'products', entityId: '${product['id']}', operation: 'upsert', payload: Map<String, dynamic>.from(product));
+    }
     await refresh();
   }
 

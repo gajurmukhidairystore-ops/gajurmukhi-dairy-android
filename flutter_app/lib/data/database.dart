@@ -340,6 +340,8 @@ CREATE TABLE milk_collections(
 
   Future<void> applyCloudRecord({required String entity, required String recordId, required String operation, required Map<String, dynamic> payload}) async {
     if (!syncableTables.contains(entity)) return;
+    final localPending = await db.query('sync_queue', where: 'entity=? AND entity_id=? AND synced=0', args: [entity, recordId], limit: 1);
+    if (localPending.isNotEmpty) return;
     if (operation == 'delete') {
       await delete(entity, recordId);
       return;
@@ -393,13 +395,34 @@ CREATE TABLE milk_collections(
     final paid = await db.rawQuery("SELECT COALESCE(SUM(paid),0) v FROM invoices WHERE date(created_at)=date('now','localtime')");
     final expenses = await db.rawQuery("SELECT COALESCE(SUM(amount),0) v FROM expenses WHERE date(created_at)=date('now','localtime')");
     final milk = await db.rawQuery("SELECT COALESCE(SUM(litres),0) v FROM milk_collections WHERE collection_date=date('now','localtime')");
-    final due = await db.rawQuery('SELECT COALESCE(SUM(balance),0) v FROM customers');
+    final due = await db.rawQuery('SELECT COALESCE(SUM(CASE WHEN balance > 0 THEN balance ELSE 0 END),0) v FROM customers');
     return {
       'sales': sales.first['v'] as num,
       'collection': paid.first['v'] as num,
       'expenses': expenses.first['v'] as num,
       'milkLitres': milk.first['v'] as num,
       'due': due.first['v'] as num,
+    };
+  }
+
+  Future<Map<String,num>> financialSummary() async {
+    final farmerPayable = await db.rawQuery('SELECT COALESCE((SELECT SUM(amount) FROM milk_collections),0) - COALESCE((SELECT SUM(amount) FROM farmer_payments),0) v');
+    final partyPayable = await db.rawQuery('SELECT COALESCE(SUM(CASE WHEN balance < 0 THEN -balance ELSE 0 END),0) v FROM customers');
+    final customerReceivable = await db.rawQuery('SELECT COALESCE(SUM(CASE WHEN balance > 0 THEN balance ELSE 0 END),0) v FROM customers');
+    final todayMilkPayable = await db.rawQuery("SELECT COALESCE(SUM(amount),0) v FROM milk_collections WHERE collection_date=date('now','localtime')");
+    final todayFarmerPaid = await db.rawQuery("SELECT COALESCE(SUM(amount),0) v FROM farmer_payments WHERE date(created_at)=date('now','localtime')");
+    final todayWalkInDue = await db.rawQuery("SELECT COALESCE(SUM(due),0) v FROM invoices WHERE customer_id IS NULL AND due > 0 AND date(created_at)=date('now','localtime')");
+    final todayCustomerDue = await db.rawQuery("SELECT COALESCE(SUM(due),0) v FROM invoices WHERE customer_id IS NOT NULL AND due > 0 AND date(created_at)=date('now','localtime')");
+    final todayPartyPaid = await db.rawQuery("SELECT COALESCE(SUM(amount),0) v FROM payments WHERE date(created_at)=date('now','localtime')");
+    return {
+      'farmerPayable': ((farmerPayable.first['v'] as num?) ?? 0).clamp(0, double.infinity),
+      'partyPayable': partyPayable.first['v'] as num,
+      'customerReceivable': customerReceivable.first['v'] as num,
+      'todayMilkPayable': todayMilkPayable.first['v'] as num,
+      'todayFarmerPaid': todayFarmerPaid.first['v'] as num,
+      'todayWalkInDue': todayWalkInDue.first['v'] as num,
+      'todayCustomerDue': todayCustomerDue.first['v'] as num,
+      'todayPartyPaid': todayPartyPaid.first['v'] as num,
     };
   }
 }

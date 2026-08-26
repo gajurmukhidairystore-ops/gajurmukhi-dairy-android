@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/database.dart';
 import '../app_profile.dart';
@@ -42,13 +43,19 @@ class GajurmukhiApp extends StatelessWidget {
           themeMode: mode,
           theme: ThemeData(
             useMaterial3: true,
-            colorSchemeSeed: const Color(0xff1976e8),
+            colorSchemeSeed: const Color(0xff16834b),
+            scaffoldBackgroundColor: const Color(0xfff7fbf8),
             brightness: Brightness.light,
-            inputDecorationTheme: const InputDecorationTheme(border: OutlineInputBorder()),
+            inputDecorationTheme: const InputDecorationTheme(
+              border: OutlineInputBorder(),
+              filled: true,
+              fillColor: Colors.white,
+            ),
+            cardTheme: const CardThemeData(color: Colors.white, surfaceTintColor: Colors.white),
           ),
           darkTheme: ThemeData(
             useMaterial3: true,
-            colorSchemeSeed: const Color(0xff1976e8),
+            colorSchemeSeed: const Color(0xff16834b),
             brightness: Brightness.dark,
             inputDecorationTheme: const InputDecorationTheme(border: OutlineInputBorder()),
           ),
@@ -425,6 +432,15 @@ class _MainShellState extends State<MainShell> {
   bool syncing = false;
   String? pendingBarcode;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final cloud = MobileCloudService();
+      if (await cloud.savedSession() != null && mounted) await syncCloud(context.read<BusinessProvider>());
+    });
+  }
+
   bool canAccess(int destination) => RolePermissions.canAccess(widget.session.role, destination);
 
   void navigate(int destination) {
@@ -451,7 +467,11 @@ class _MainShellState extends State<MainShell> {
       final cloud = MobileCloudService();
       final session = await cloud.savedSession();
       if (session == null) throw StateError('Sign in to the shared cloud first.');
-      final received = await AuthenticatedSyncCoordinator(db: provider.db, cloud: cloud, session: session).syncNow();
+      final prefs = await SharedPreferences.getInstance();
+      final savedCursor = DateTime.tryParse(prefs.getString('gajurmukhi_cloud_sync_cursor') ?? '');
+      final since = savedCursor?.subtract(const Duration(minutes: 2));
+      final received = await AuthenticatedSyncCoordinator(db: provider.db, cloud: cloud, session: session).syncNow(since: since);
+      await prefs.setString('gajurmukhi_cloud_sync_cursor', DateTime.now().toUtc().toIso8601String());
       await provider.refresh();
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Cloud sync complete. $received shared updates received.')));
     } catch (error) {

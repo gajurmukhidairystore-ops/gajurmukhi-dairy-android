@@ -344,11 +344,19 @@ class _BillingScreenState extends State<BillingScreen> {
   Widget build(BuildContext context) {
     final needle = search.text.trim().toLowerCase();
     final products = widget.p.products.where((product) => needle.isEmpty || '${product['name']}'.toLowerCase().contains(needle) || '${product['barcode'] ?? ''}'.toLowerCase().contains(needle) || '${product['sku'] ?? ''}'.toLowerCase().contains(needle)).toList();
-    return Row(
-      children: [
-        Expanded(
-          flex: 3,
-          child: ListView(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final narrow = constraints.maxWidth < 700;
+        return Flex(
+          direction: narrow ? Axis.vertical : Axis.horizontal,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Flexible(
+              flex: 3,
+              fit: narrow ? FlexFit.loose : FlexFit.tight,
+              child: SizedBox(
+                height: narrow ? 300 : double.infinity,
+                child: ListView(
             padding: const EdgeInsets.all(12),
             children: [
               Row(children: [
@@ -364,26 +372,37 @@ class _BillingScreenState extends State<BillingScreen> {
                       subtitle: Text('Stock ${p['stock']} • ${p['unit']}'),
                       trailing: Text('NPR ${p['sale_price']}'),
                     ),
-                  )),
-            ],
-          ),
-        ),
-        Expanded(
-          flex: 4,
-          child: Card(
+                  )                ),
+              ),
+            ),
+            ),
+            Flexible(
+              flex: 4,
+              fit: FlexFit.loose,
+              child: Card(
+
             margin: const EdgeInsets.all(12),
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
                 children: [
-                  const Row(children: [
-                    Icon(Icons.receipt_long),
-                    SizedBox(width: 8),
-                    Text('Current Bill', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  ]),
-                  const Divider(),
-                  Expanded(
-                    child: ListView(
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary, borderRadius: BorderRadius.circular(16)),
+                    child: Row(children: [
+                      const Icon(Icons.receipt_long, color: Colors.white),
+                      const SizedBox(width: 8),
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        const Text('Current Bill', style: TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold)),
+                        Text(selectedCustomerId == null ? 'Walking customer' : '${customerById(selectedCustomerId)?['name'] ?? 'Registered customer'}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                      ])),
+                    ]),
+                  ),
+                  const SizedBox(height: 8),
+                  Flexible(
+                    fit: narrow ? FlexFit.loose : FlexFit.tight,
+                    child: ListView(shrinkWrap: narrow,
                       children: cart
                           .map((i) => ListTile(
                                 title: Text(i['name']),
@@ -465,6 +484,7 @@ class _BillingScreenState extends State<BillingScreen> {
                   ],
                   DropdownButtonFormField<String>(
                     initialValue: selectedCustomerId,
+                    isExpanded: true,
                     decoration: const InputDecoration(labelText: 'Customer / party'),
                     hint: const Text('Walk-in customer'),
                     items: widget.p.customers
@@ -484,10 +504,13 @@ class _BillingScreenState extends State<BillingScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  FilledButton.icon(
-                    onPressed: save,
-                    icon: const Icon(Icons.check),
-                    label: const Text('Save & Complete Bill'),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: save,
+                      icon: const Icon(Icons.check_circle_outline),
+                      label: const Padding(padding: EdgeInsets.symmetric(vertical: 4), child: Text('CHECKOUT / PAY INVOICE', style: TextStyle(fontWeight: FontWeight.w800))),
+                    ),
                   ),
                   OutlinedButton.icon(
                     onPressed: cart.isEmpty && lastSavedCart.isEmpty
@@ -511,6 +534,28 @@ class _BillingScreenState extends State<BillingScreen> {
                           },
                     icon: const Icon(Icons.print),
                     label: const Text('A4 Preview / Print'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: cart.isEmpty && lastSavedCart.isEmpty
+                        ? null
+                        : () async {
+                            final saved = cart.isEmpty;
+                            final items = saved ? lastSavedCart : cart;
+                            await PrintingService().printPos(
+                              invoiceNo: saved ? 'SAVED-${DateTime.now().millisecondsSinceEpoch}' : 'PREVIEW',
+                              customer: saved ? lastSavedCustomerName : 'Walk-in Customer',
+                              items: items,
+                              total: saved ? lastSavedTotal : total,
+                              paid: saved ? lastSavedPaid : paid,
+                              due: saved ? lastSavedDue : due,
+                              discount: saved ? lastSavedDiscount : discount,
+                              discountReason: saved ? lastSavedDiscountReason : discountReason.text.trim(),
+                              qrStatus: saved ? lastSavedQrStatus : qrStatus,
+                              luckyToken: lastLuckyToken,
+                            );
+                          },
+                    icon: const Icon(Icons.receipt_long),
+                    label: const Text('POS Receipt / Print'),
                   ),
                   const SizedBox(height: 8),
                   ExpansionTile(
@@ -551,7 +596,9 @@ class _BillingScreenState extends State<BillingScreen> {
             ),
           ),
         ),
-      ],
+          ],
+        );
+      },
     );
   }
 }
