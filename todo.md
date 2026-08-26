@@ -221,4 +221,4 @@
 - [x] Add security controls preventing public indexing, exposing unrelated orders, leaking precise contact data, or continuing location updates after stop-sharing
 - [x] Add audit events for tracking-link creation, access, status changes, location updates, revocation, expiry, and missed-delivery contact actions
 - [x] Add Admin controls to view active tracking links and block, revoke, unblock, or reissue them with immediate location-stop behavior and audit history
-- [ ] Create a fresh complete updated Android source and artifact package, with incremented version metadata, debug APK, release APK, release AAB, and phone-only installation guidance
+- [x] Create a fresh complete updated Android source and artifact package, with incremented version metadata, debug APK, release APK, release AAB, and phone-only installation guidance
