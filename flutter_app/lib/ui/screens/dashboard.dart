@@ -3,7 +3,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../providers/business_provider.dart';
 import '../../services/nepali_date_service.dart';
-import '../../services/whatsapp_service.dart';
 
 bool canSubmitPayment({required String? customerId, required String amountText, required bool saving}) {
   final amount = double.tryParse(amountText) ?? 0;
@@ -479,7 +478,7 @@ class _SummaryCard extends StatelessWidget {
               const Divider(height: 16),
               Row(
                 children: [
-                  Expanded(child: InkWell(onTap: onReceivedTap, borderRadius: BorderRadius.circular(10), child: Padding(padding: const EdgeInsets.all(4), child: Text('Received\nNPR${received.toStringAsFixed(0)}', style: const TextStyle(color: Color(0xff4ca55b), fontSize: 16, height: 1.35)))),
+                  Expanded(child: InkWell(onTap: onReceivedTap, borderRadius: BorderRadius.circular(10), child: Padding(padding: const EdgeInsets.all(4), child: Text('Received\nNPR${received.toStringAsFixed(0)}', style: const TextStyle(color: Color(0xff4ca55b), fontSize: 16, height: 1.35))))),
                   DecoratedBox(
                     decoration: BoxDecoration(color: const Color(0xffe4f2ff), borderRadius: BorderRadius.circular(24)),
                     child: Padding(padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8), child: Text('Outstanding: NPR${due.toStringAsFixed(0)}', style: const TextStyle(color: Color(0xff176acb), fontSize: 13))),
