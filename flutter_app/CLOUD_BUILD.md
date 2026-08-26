@@ -80,3 +80,9 @@ After installing the debug APK, test invoice creation while offline, app restart
 ## If GitHub Actions is unavailable
 
 Do not attempt to build locally on the phone. Send the repository link and the failed workflow step to the project owner or use another hosted Flutter builder that accepts a GitHub repository. The checked-in workflow remains the reproducible source of truth for the three requested artifacts.
+
+## Fresh complete package update
+
+The current fresh package is version **1.0.4+5** with application ID `com.gajurmukhi.one.v2`. It contains the unified Gajurmukhi app, including the dairy, retail, billing, inventory, ledger, synchronization, AI, music, alarm, lucky-draw, GPS, and secure browser-delivery-tracking workflows.
+
+Each successful workflow produces one ZIP artifact containing all three build outputs. For a phone installation, extract the ZIP and install **only `app-release.apk`**. Use `app-debug.apk` only on a separate test installation; do not install both over the same application. Keep `app-release.aab` for Google Play upload. Before replacing an old installation, run cloud sync and create an offline backup. If Android does not show an Update option for the release APK, do not uninstall until the data has been synchronized and exported, because a package-name or signing-key mismatch must be diagnosed first.
