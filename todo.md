@@ -181,3 +181,11 @@
 - [ ] Update the Store/POS screen with a prominent camera scanner, Add inventory item action, department-store-style item list, and editable purchase/selling price controls.
 - [x] Ensure front-page Scan item to customer bill opens the camera and preloads the scanned product into the current bill.
 - [x] Rebuild and verify the corrected APK after the scanner and department-store inventory UI update.
+- [ ] Preserve in-place update compatibility: verify the existing Gajurmukhi One package ID and release signing certificate, keep the same identity in future feature APKs, and never require uninstall or local-data clearing for normal updates.
+- [ ] Validate the next feature APK as an update over the installed release, or clearly stop before delivery if the installed APK uses a different signing certificate.
+- [ ] Keep the confirmed installed package ID `com.gajurmukhi.one` and preserve the same release signing identity so the new scanner/inventory APK can update the installed v1.0.0 without uninstalling.
+- [ ] Compare the next APK package/signature against the installed release before asking the user to install it.
+- [ ] Deliver the front-page scanner and department-store-style inventory price update as an in-place upgrade over the user’s last installed `com.gajurmukhi.one` APK, without asking for uninstall.
+- [ ] Resolve the repeated installed-APK report: the old `com.gajurmukhi.one` installation still lacks front-page barcode Scan and Add Inventory; deliver a compatible update without uninstalling or clearing data.
+- [ ] Ensure the next in-place update visibly includes one dashboard Scan item to bill action, camera scanning, and automatic scanned-product insertion into the customer bill.
+- [ ] Ensure the in-place update visibly includes one front-page camera scanner and a department-store-style inventory screen with Add item and editable selling price.
