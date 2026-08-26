@@ -148,6 +148,15 @@ class BusinessProvider extends ChangeNotifier {
     await refresh();
   }
 
+  Future<void> updateMonthlyCustomer(String customerId, {required bool enabled, int settlementDay = 30}) async {
+    if (settlementDay < 1 || settlementDay > 31) throw ArgumentError('Settlement day must be between 1 and 31');
+    final updated = await db.update('customers', {'monthly_customer': enabled ? 1 : 0, 'settlement_day': settlementDay}, customerId);
+    if (updated == 0) throw StateError('Customer was not found');
+    final customer = (await db.query('customers', where: 'id=?', args: [customerId])).first;
+    await db.enqueueSync(entity: 'customers', entityId: customerId, operation: 'upsert', payload: Map<String, dynamic>.from(customer));
+    await refresh();
+  }
+
   Future<void> updateCustomerMilkRate(String customerId, double rate) async {
     if (rate < 0) throw ArgumentError('Fixed milk rate cannot be negative');
     final updated = await db.update('customers', {'milk_rate': rate}, customerId);
@@ -358,6 +367,26 @@ class BusinessProvider extends ChangeNotifier {
       final customer = (await db.query('customers', where: 'id=?', args: [customerId])).first;
       await db.enqueueSync(entity: 'customers', entityId: customerId, operation: 'upsert', payload: Map<String, dynamic>.from(customer));
     }
+    await refresh();
+  }
+
+  Future<void> recordDirectLedgerEntry({required String customerId, required double amount, required String direction, required String method, String note = ''}) async {
+    if (customerId.trim().isEmpty) throw ArgumentError('Customer or party is required');
+    if (amount <= 0) throw ArgumentError('Ledger amount must be greater than zero');
+    if (direction != 'RECEIVABLE' && direction != 'PAYABLE') throw ArgumentError('Choose money to receive or money to pay');
+    final customers = await db.query('customers', where: 'id=? AND active=1', args: [customerId]);
+    if (customers.isEmpty) throw StateError('Customer or party was not found');
+    final now = DateTime.now().toIso8601String();
+    final id = uuid.v4();
+    final delta = direction == 'RECEIVABLE' ? amount : -amount;
+    final entry = <String, Object?>{'id': id, 'customer_id': customerId, 'type': direction == 'RECEIVABLE' ? 'DIRECT_RECEIVABLE' : 'DIRECT_PAYABLE', 'amount': amount, 'reference_id': id, 'note': note.trim().isEmpty ? (direction == 'RECEIVABLE' ? 'Direct amount to receive' : 'Direct amount to pay') : note.trim(), 'created_at': now};
+    await db.db.transaction((txn) async {
+      await txn.rawUpdate('UPDATE customers SET balance=balance+? WHERE id=?', [delta, customerId]);
+      await txn.insert('ledger', entry);
+    });
+    await db.enqueueSync(entity: 'ledger', entityId: id, operation: 'upsert', payload: Map<String, dynamic>.from(entry));
+    final updatedCustomer = (await db.query('customers', where: 'id=?', args: [customerId])).first;
+    await db.enqueueSync(entity: 'customers', entityId: customerId, operation: 'upsert', payload: Map<String, dynamic>.from(updatedCustomer));
     await refresh();
   }
 

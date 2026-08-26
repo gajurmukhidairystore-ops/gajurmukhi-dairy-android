@@ -14,7 +14,7 @@ class AppDatabase {
 
   Future<void> init({String? path}) async {
     final p = path ?? join(await getDatabasesPath(), 'gajurmukhi_pro.db');
-    db = await openDatabase(p, version: 18, onCreate: _create, onUpgrade: _upgrade);
+    db = await openDatabase(p, version: 19, onCreate: _create, onUpgrade: _upgrade);
   }
 
   Future<void> _create(Database db, int version) async {
@@ -23,6 +23,7 @@ class AppDatabase {
         id TEXT PRIMARY KEY, name TEXT NOT NULL, phone TEXT, address TEXT,
         latitude REAL, longitude REAL, location_accuracy REAL, location_captured_at TEXT,
         credit_limit REAL DEFAULT 0, balance REAL DEFAULT 0, milk_rate REAL DEFAULT 0,
+        monthly_customer INTEGER DEFAULT 0, settlement_day INTEGER DEFAULT 30,
         active INTEGER DEFAULT 1, created_at TEXT NOT NULL
       )
     ''');
@@ -328,6 +329,10 @@ CREATE TABLE milk_collections(
       await db.execute('ALTER TABLE orders ADD COLUMN tracking_expires_at TEXT');
       await db.execute('ALTER TABLE orders ADD COLUMN tracking_blocked INTEGER DEFAULT 0');
       await db.execute('ALTER TABLE orders ADD COLUMN tracking_last_cloud_update TEXT');
+    }
+    if (oldV < 19) {
+      await db.execute('ALTER TABLE customers ADD COLUMN monthly_customer INTEGER DEFAULT 0');
+      await db.execute('ALTER TABLE customers ADD COLUMN settlement_day INTEGER DEFAULT 30');
     }
   }
 

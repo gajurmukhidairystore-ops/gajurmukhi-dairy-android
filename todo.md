@@ -229,3 +229,7 @@
 - [x] Provide and verify a simpler phone-downloadable delivery path for the fresh release APK after the GitHub Actions artifact could not be downloaded
 - [ ] Resolve the Android package-signature conflict shown on the user’s phone and provide a safe update or backup-and-reinstall path without avoidable local-data loss
 - [ ] Build a side-by-side installation variant with a new Android package ID so it does not conflict with the old signed app
+- [ ] Add fast shared sync status and retry behavior for Admin, Store, Collector, and Customer roles
+- [ ] Add secure role-scoped in-app messaging with offline queue and cloud delivery
+- [ ] Add permission-gated voice and video call session controls with privacy-safe participant access
+- [ ] Add monthly-settlement customer option with period billing, month-end statement, payments, reminders, and synced customer settings

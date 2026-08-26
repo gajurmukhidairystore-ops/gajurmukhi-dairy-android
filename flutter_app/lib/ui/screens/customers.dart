@@ -46,6 +46,37 @@ class _CustomersScreenState extends State<CustomersScreen> {
     }
   }
 
+  Future<void> _directLedger(BuildContext context, Map<String, Object?> customer) async {
+    final amount = TextEditingController();
+    final note = TextEditingController();
+    String direction = 'RECEIVABLE';
+    String method = 'CASH';
+    final ok = await showDialog<bool>(context: context, builder: (_) => StatefulBuilder(builder: (dialogContext, setDialogState) => AlertDialog(
+      title: Text('Direct ledger · ${customer['name']}'),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
+        DropdownButtonFormField<String>(initialValue: direction, decoration: const InputDecoration(labelText: 'Entry type'), items: const [DropdownMenuItem(value: 'RECEIVABLE', child: Text('Money to receive from them')), DropdownMenuItem(value: 'PAYABLE', child: Text('Money to pay to them'))], onChanged: (value) => setDialogState(() => direction = value ?? direction)),
+        const SizedBox(height: 12),
+        TextField(controller: amount, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Amount (NPR)')),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(initialValue: method, decoration: const InputDecoration(labelText: 'Method'), items: const [DropdownMenuItem(value: 'CASH', child: Text('Cash')), DropdownMenuItem(value: 'QR', child: Text('QR')), DropdownMenuItem(value: 'BANK', child: Text('Bank')), DropdownMenuItem(value: 'CREDIT', child: Text('Credit / manual'))], onChanged: (value) => setDialogState(() => method = value ?? method)),
+        const SizedBox(height: 12),
+        TextField(controller: note, maxLines: 2, decoration: const InputDecoration(labelText: 'Note or reference')),
+      ]),
+      actions: [TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Save ledger entry'))],
+    )));
+    final value = double.tryParse(amount.text.trim()) ?? 0;
+    if (ok == true && value > 0) {
+      try {
+        await widget.p.recordDirectLedgerEntry(customerId: '${customer['id']}', amount: value, direction: direction, method: method, note: '${method} · ${note.text.trim()}');
+        if (mounted) ScaffoldMessenger.of(this.context).showSnackBar(const SnackBar(content: Text('Direct ledger entry saved')));
+      } catch (error) {
+        if (mounted) ScaffoldMessenger.of(this.context).showSnackBar(SnackBar(content: Text('Could not save direct ledger entry: $error')));
+      }
+    }
+    amount.dispose();
+    note.dispose();
+  }
+
   Future<void> _remind(BuildContext context, Map<String, Object?> customer) async {
     final amount = (customer['balance'] as num?)?.toDouble() ?? 0;
     if (amount <= 0) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('This customer has no outstanding balance'))); return; }
@@ -103,6 +134,27 @@ class _CustomersScreenState extends State<CustomersScreen> {
     }
   }
 
+  Future<void> _setMonthly(BuildContext context, Map<String, Object?> customer) async {
+    var enabled = (customer['monthly_customer'] as num?)?.toInt() == 1;
+    final day = TextEditingController(text: '${customer['settlement_day'] ?? 30}');
+    final result = await showDialog<(bool, int)?>(context: context, builder: (dialogContext) => StatefulBuilder(builder: (dialogContext, setDialogState) => AlertDialog(
+      title: Text('Monthly customer · ${customer['name']}'),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
+        SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Settle at month end'), subtitle: const Text('Keep purchases on the monthly statement instead of daily settlement.'), value: enabled, onChanged: (value) => setDialogState(() => enabled = value)),
+        if (enabled) TextField(controller: day, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Settlement day', helperText: 'Use 28–31 for month-end settlement.')),
+      ]),
+      actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(dialogContext, (enabled, int.tryParse(day.text.trim()) ?? 30)), child: const Text('Save'))],
+    )));
+    day.dispose();
+    if (result == null) return;
+    try {
+      await widget.p.updateMonthlyCustomer('${customer['id']}', enabled: result.$1, settlementDay: result.$2);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result.$1 ? 'Monthly settlement enabled' : 'Monthly settlement disabled')));
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save monthly setting: $error')));
+    }
+  }
+
   Future<void> _setMilkRate(Map<String, Object?> customer) async {
     final rate = TextEditingController(text: '${customer['milk_rate'] ?? 0}');
     final value = await showDialog<double>(context: context, builder: (dialogContext) => AlertDialog(
@@ -128,13 +180,14 @@ class _CustomersScreenState extends State<CustomersScreen> {
       final hasLocation = c['latitude'] != null && c['longitude'] != null;
       final address = '${c['address'] ?? ''}'.trim();
       final locationLabel = hasLocation ? 'GPS location saved' : 'GPS location not captured';
+      final monthlyLabel = (c['monthly_customer'] as num?)?.toInt() == 1 ? 'Monthly settlement · day ${c['settlement_day'] ?? 30}' : 'Daily settlement';
       return Card(child: ListTile(
         leading: CircleAvatar(child: Icon(hasLocation ? Icons.location_on : Icons.person)),
         title: Text('${c['name']}'),
-        subtitle: Text('${c['phone'] ?? ''}\n${address.isEmpty ? 'Address not entered' : address}\nOutstanding: NPR ${c['balance'] ?? 0} · Fixed milk rate: NPR ${c['milk_rate'] ?? 0}/L · $locationLabel'),
+        subtitle: Text('${c['phone'] ?? ''}\n${address.isEmpty ? 'Address not entered' : address}\nOutstanding: NPR ${c['balance'] ?? 0} · $monthlyLabel · Fixed milk rate: NPR ${c['milk_rate'] ?? 0}/L · $locationLabel'),
         isThreeLine: true,
         onTap: () => _statement(context, c),
-        trailing: PopupMenuButton<String>(onSelected: (v) { if (v == 'payment') _record(context, c, advance: false); if (v == 'advance') _record(context, c, advance: true); if (v == 'rate') _setMilkRate(c); if (v == 'statement') _statement(context, c); if (v == 'remind') _remind(context, c); if (v == 'capture') _captureCustomerLocation(c); if (v == 'map') _openMap(c); }, itemBuilder: (_) => const [PopupMenuItem(value: 'payment', child: Text('Record payment')), PopupMenuItem(value: 'advance', child: Text('Record advance')), PopupMenuItem(value: 'rate', child: Text('Set fixed milk rate')), PopupMenuItem(value: 'statement', child: Text('View statement')), PopupMenuItem(value: 'remind', child: Text('Send credit reminder')), PopupMenuItem(value: 'capture', child: Text('Capture/update GPS location')), PopupMenuItem(value: 'map', child: Text('Open customer on map'))]),
+        trailing: PopupMenuButton<String>(onSelected: (v) { if (v == 'payment') _record(context, c, advance: false); if (v == 'advance') _record(context, c, advance: true); if (v == 'direct') _directLedger(context, c); if (v == 'monthly') _setMonthly(context, c); if (v == 'rate') _setMilkRate(c); if (v == 'statement') _statement(context, c); if (v == 'remind') _remind(context, c); if (v == 'capture') _captureCustomerLocation(c); if (v == 'map') _openMap(c); }, itemBuilder: (_) => const [PopupMenuItem(value: 'payment', child: Text('Record payment')), PopupMenuItem(value: 'advance', child: Text('Record advance')), PopupMenuItem(value: 'direct', child: Text('Add direct ledger entry')), PopupMenuItem(value: 'monthly', child: Text('Monthly settlement settings')), PopupMenuItem(value: 'rate', child: Text('Set fixed milk rate')), PopupMenuItem(value: 'statement', child: Text('View statement')), PopupMenuItem(value: 'remind', child: Text('Send credit reminder')), PopupMenuItem(value: 'capture', child: Text('Capture/update GPS location')), PopupMenuItem(value: 'map', child: Text('Open customer on map'))]),
       ));
     })
   ]);
