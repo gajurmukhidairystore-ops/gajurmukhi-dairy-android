@@ -190,3 +190,4 @@
 - [ ] Ensure the next in-place update visibly includes one dashboard Scan item to bill action, camera scanning, and automatic scanned-product insertion into the customer bill.
 - [ ] Ensure the in-place update visibly includes one front-page camera scanner and a department-store-style inventory screen with Add item and editable selling price.
 - [ ] Rebuild a fresh Gajurmukhi One release with the front-page barcode scanner, direct scan-to-bill flow, and department-store-style inventory price controls while retaining the old APK as a fallback.
+- [ ] Build an embedded Admin-only AI Media Studio for branded social-media images, captions, offers, festival posts, WhatsApp Status content, and media drafts with channel/language selection, preview, confirmation, and native sharing.

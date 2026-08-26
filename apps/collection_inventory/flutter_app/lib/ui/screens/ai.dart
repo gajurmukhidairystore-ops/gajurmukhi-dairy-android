@@ -25,6 +25,9 @@ class _AiScreenState extends State<AiScreen> {
   bool commandBusy = false;
   bool socialBusy = false;
   String socialChannel = 'facebook';
+  String socialLanguage = 'Nepali';
+  String socialFormat = 'Product poster';
+  String socialStyle = 'Special offer';
   SocialMediaDraft? socialDraft;
   static const apiBaseUrl = String.fromEnvironment('API_BASE_URL');
 
@@ -74,7 +77,8 @@ class _AiScreenState extends State<AiScreen> {
     if (confirmed != true || !mounted) return;
     setState(() => socialBusy = true);
     try {
-      final draft = await MobileCloudService().generateSocialMediaDraft(channel: socialChannel, prompt: prompt);
+      final requestPrompt = 'Create a $socialFormat for a $socialStyle campaign in $socialLanguage. Use the Gajurmukhi Dairy & Store brand, clear readable text, and a practical call to action. User brief: $prompt';
+      final draft = await MobileCloudService().generateSocialMediaDraft(channel: socialChannel, prompt: requestPrompt);
       if (mounted) setState(() => socialDraft = draft);
     } catch (error) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not generate draft: $error')));
@@ -111,6 +115,14 @@ class _AiScreenState extends State<AiScreen> {
           const Text('Create a reviewable image-and-caption draft for Facebook, Instagram, WhatsApp Status, or another channel. It does not post anything automatically.'),
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(initialValue: socialChannel, decoration: const InputDecoration(labelText: 'Channel'), items: const [DropdownMenuItem(value: 'facebook', child: Text('Facebook')), DropdownMenuItem(value: 'instagram', child: Text('Instagram')), DropdownMenuItem(value: 'whatsapp_status', child: Text('WhatsApp Status')), DropdownMenuItem(value: 'other', child: Text('Other social media'))], onChanged: socialBusy ? null : (value) => setState(() => socialChannel = value ?? socialChannel)),
+          const SizedBox(height: 10),
+          Row(children: [
+            Expanded(child: DropdownButtonFormField<String>(initialValue: socialLanguage, decoration: const InputDecoration(labelText: 'Language'), items: const [DropdownMenuItem(value: 'Nepali', child: Text('Nepali')), DropdownMenuItem(value: 'English', child: Text('English')), DropdownMenuItem(value: 'Hindi', child: Text('Hindi'))], onChanged: socialBusy ? null : (value) => setState(() => socialLanguage = value ?? socialLanguage))),
+            const SizedBox(width: 8),
+            Expanded(child: DropdownButtonFormField<String>(initialValue: socialFormat, decoration: const InputDecoration(labelText: 'Media format'), items: const [DropdownMenuItem(value: 'Product poster', child: Text('Product poster')), DropdownMenuItem(value: 'Festival offer graphic', child: Text('Festival offer')), DropdownMenuItem(value: 'WhatsApp Status poster', child: Text('Status poster'))], onChanged: socialBusy ? null : (value) => setState(() => socialFormat = value ?? socialFormat))),
+          ]),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(initialValue: socialStyle, decoration: const InputDecoration(labelText: 'Campaign style'), items: const [DropdownMenuItem(value: 'Special offer', child: Text('Special offer')), DropdownMenuItem(value: 'New product announcement', child: Text('New product')), DropdownMenuItem(value: 'Festival greeting', child: Text('Festival greeting')), DropdownMenuItem(value: 'Daily business update', child: Text('Daily update'))], onChanged: socialBusy ? null : (value) => setState(() => socialStyle = value ?? socialStyle)),
           const SizedBox(height: 10),
           TextField(controller: socialPrompt, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Promotion details', hintText: 'Example: Fresh morning milk delivery for Dashain week')),
           const SizedBox(height: 10),
