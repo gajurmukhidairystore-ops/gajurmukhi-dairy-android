@@ -1,11 +1,24 @@
 import 'package:flutter/material.dart';
 
 import '../../providers/business_provider.dart';
+import '../../services/nepali_date_service.dart';
+
+bool canSubmitPayment({required String? customerId, required String amountText, required bool saving}) {
+  final amount = double.tryParse(amountText) ?? 0;
+  return customerId != null && customerId.isNotEmpty && amount > 0 && !saving;
+}
+
+List<Map<String, Object?>> lowStockItems(List<Map<String, Object?>> products) => products.where((product) {
+      final stock = (product['stock'] as num?)?.toDouble() ?? 0;
+      final threshold = (product['low_stock'] as num?)?.toDouble() ?? 5;
+      return (product['active'] ?? 1) != 0 && stock <= threshold;
+    }).toList();
 
 class DashboardScreen extends StatefulWidget {
   final BusinessProvider p;
   final ValueChanged<int>? onNavigate;
-  const DashboardScreen(this.p, {super.key, this.onNavigate});
+  final VoidCallback? onScanToBill;
+  const DashboardScreen(this.p, {super.key, this.onNavigate, this.onScanToBill});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -20,6 +33,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   num get amount => p.totals['sales'] ?? 0;
   num get received => p.totals['collection'] ?? 0;
   num get due => p.totals['due'] ?? 0;
+  List<Map<String, Object?>> get lowStock => lowStockItems(p.products);
+  num get milkInventory => p.products.where((product) => '${product['name'] ?? ''}'.toLowerCase() == 'milk 1 ltr').fold<num>(0, (sum, product) => sum + ((product['stock'] as num?) ?? 0));
 
   @override
   void dispose() {
@@ -27,73 +42,70 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.dispose();
   }
 
-  String monthLabel(DateTime date) {
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-    return '${months[date.month - 1]} ${date.year}';
-  }
+  String monthLabel(DateTime date) => NepaliDateService.fromAd(date);
 
   void open(int index) => widget.onNavigate?.call(index);
 
-  void showPayDialog() {
+  Future<void> showPayDialog() async {
+    final pageContext = context;
+    final messenger = ScaffoldMessenger.maybeOf(pageContext);
     final amountController = TextEditingController();
     String? customerId;
-    showDialog<void>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Record payment'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<String>(
-                initialValue: customerId,
-                hint: const Text('Select customer'),
-                items: p.customers
-                    .map((customer) => DropdownMenuItem<String>(
-                          value: customer['id']?.toString(),
-                          child: Text('${customer['name']}'),
-                        ))
-                    .toList(),
-                onChanged: (value) => setDialogState(() => customerId = value),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: amountController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'Amount (NPR)'),
+    var saving = false;
+    try {
+      await showDialog<void>(
+        context: pageContext,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, setDialogState) => AlertDialog(
+            title: const Text('Record payment'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  initialValue: customerId,
+                  hint: const Text('Select customer'),
+                  items: p.customers
+                      .map((customer) => DropdownMenuItem<String>(
+                            value: customer['id']?.toString(),
+                            child: Text('${customer['name']}'),
+                          ))
+                      .toList(),
+                  onChanged: (value) => setDialogState(() => customerId = value),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: amountController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(labelText: 'Amount (NPR)'),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Cancel')),
+              FilledButton(
+                onPressed: saving
+                    ? null
+                    : () async {
+                        final value = double.tryParse(amountController.text.trim()) ?? 0;
+                        if (!canSubmitPayment(customerId: customerId, amountText: amountController.text, saving: saving)) return;
+                        setDialogState(() => saving = true);
+                        try {
+                          await p.recordPayment(customerId, value, 'CASH', 'Payment from Milk Khata home');
+                          if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+                        } catch (error) {
+                          if (dialogContext.mounted) setDialogState(() => saving = false);
+                          messenger?.showSnackBar(SnackBar(content: Text('Could not save payment: $error')));
+                        }
+                      },
+                child: Text(saving ? 'Saving…' : 'Save payment'),
               ),
             ],
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            FilledButton(
-              onPressed: customerId == null
-                  ? null
-                  : () async {
-                      final value = double.tryParse(amountController.text) ?? 0;
-                      if (value <= 0) return;
-                      await p.recordPayment(customerId, value, 'CASH', 'Payment from Milk Khata home');
-                      if (context.mounted) Navigator.pop(context);
-                    },
-              child: const Text('Save payment'),
-            ),
-          ],
         ),
-      ),
-    ).whenComplete(amountController.dispose);
+      );
+    } finally {
+      amountController.dispose();
+    }
   }
 
   @override
@@ -123,7 +135,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(16),
-                        child: Image.asset('assets/gajurmukhi-app-logo.png', width: 48, height: 48, fit: BoxFit.cover),
+                        child: Image.asset('assets/gajurmukhi-app-logo.png', width: 128, height: 64, fit: BoxFit.contain),
                       ),
                       const SizedBox(width: 12),
                       const Expanded(
@@ -171,6 +183,63 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       const SizedBox(height: 6),
                       _SummaryCard(milk: milk, amount: amount, due: due, received: received),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: Card(
+                          margin: EdgeInsets.zero,
+                          elevation: 0,
+                          color: const Color(0xff176acb),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(18),
+                            onTap: widget.onScanToBill,
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              child: Row(
+                                children: [
+                                  CircleAvatar(backgroundColor: Colors.white, foregroundColor: Color(0xff176acb), radius: 24, child: Icon(Icons.camera_alt_outlined, size: 27)),
+                                  SizedBox(width: 12),
+                                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                    Text('SCAN ITEM TO BILL', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+                                    SizedBox(height: 3),
+                                    Text('Open camera → scan barcode → add directly to customer bill', style: TextStyle(color: Colors.white, fontSize: 12)),
+                                  ])),
+                                  Icon(Icons.arrow_forward_ios, color: Colors.white, size: 18),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      if (lowStock.isNotEmpty) ...[
+                        Card(
+                          elevation: 0,
+                          color: const Color(0xfffff1e6),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                          child: ListTile(
+                            leading: const CircleAvatar(backgroundColor: Colors.white, child: Icon(Icons.warning_amber_rounded, color: Color(0xffc86616))),
+                            title: Text('${lowStock.length} item${lowStock.length == 1 ? '' : 's'} need restocking', style: const TextStyle(fontWeight: FontWeight.w700)),
+                            subtitle: Text(lowStock.take(3).map((item) => '${item['name']} (${(item['stock'] as num?)?.toStringAsFixed(1) ?? '0'})').join(' · ')),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => open(3),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+                      Card(
+                        elevation: 0,
+                        color: const Color(0xffeaf7f0),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                        child: ListTile(
+                          leading: const CircleAvatar(backgroundColor: Colors.white, child: Icon(Icons.local_drink_outlined, color: Color(0xff268b58))),
+                          title: const Text('Dairy inventory', style: TextStyle(fontWeight: FontWeight.w700)),
+                          subtitle: const Text('Milk received from farmer collections'),
+                          trailing: Text('${milkInventory.toStringAsFixed(1)} L', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: Color(0xff268b58))),
+                          onTap: () => open(3),
+                        ),
+                      ),
                       const SizedBox(height: 12),
                       Row(
                         children: [
@@ -183,6 +252,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           Expanded(child: _QuickAction(icon: Icons.calendar_month_outlined, label: 'Bulk Entry', color: const Color(0xffdff2ef), onTap: () => open(4))),
                         ],
                       ),
+                      const SizedBox(height: 8),
+                      SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: () => open(5), icon: const Icon(Icons.fact_check_outlined), label: const Text('Open daily close report'))),
                       const SizedBox(height: 12),
                       TextField(
                         controller: search,

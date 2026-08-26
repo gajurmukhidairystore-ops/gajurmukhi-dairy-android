@@ -5,16 +5,17 @@ import 'package:sqflite/sqflite.dart';
 class AppDatabase {
   late Database db;
 
-  Future<void> init() async {
-    final p = join(await getDatabasesPath(), 'gajurmukhi_pro.db');
-    db = await openDatabase(p, version: 5, onCreate: _create, onUpgrade: _upgrade);
+  Future<void> init({String? path}) async {
+    final p = path ?? join(await getDatabasesPath(), 'gajurmukhi_pro.db');
+    db = await openDatabase(p, version: 17, onCreate: _create, onUpgrade: _upgrade);
   }
 
   Future<void> _create(Database db, int version) async {
     await db.execute('''
       CREATE TABLE customers(
         id TEXT PRIMARY KEY, name TEXT NOT NULL, phone TEXT, address TEXT,
-        credit_limit REAL DEFAULT 0, balance REAL DEFAULT 0,
+        latitude REAL, longitude REAL, location_accuracy REAL, location_captured_at TEXT,
+        credit_limit REAL DEFAULT 0, balance REAL DEFAULT 0, milk_rate REAL DEFAULT 0,
         active INTEGER DEFAULT 1, created_at TEXT NOT NULL
       )
     ''');
@@ -22,7 +23,7 @@ class AppDatabase {
       CREATE TABLE products(
         id TEXT PRIMARY KEY, name TEXT NOT NULL, category TEXT, unit TEXT NOT NULL,
         sale_price REAL NOT NULL, purchase_price REAL DEFAULT 0, stock REAL DEFAULT 0,
-        low_stock REAL DEFAULT 5, barcode TEXT, active INTEGER DEFAULT 1
+        low_stock REAL DEFAULT 5, barcode TEXT, sku TEXT, size TEXT, color TEXT, variant_group TEXT, tax_group_id TEXT, active INTEGER DEFAULT 1
       )
     ''');
     await db.execute('''
@@ -30,7 +31,7 @@ class AppDatabase {
         id TEXT PRIMARY KEY, invoice_no TEXT UNIQUE NOT NULL, customer_id TEXT,
         subtotal REAL NOT NULL, discount REAL DEFAULT 0, tax REAL DEFAULT 0,
         total REAL NOT NULL, paid REAL DEFAULT 0, due REAL DEFAULT 0,
-        payment_method TEXT, status TEXT DEFAULT 'PAID', qr_status TEXT DEFAULT 'not_applicable', note TEXT, created_at TEXT NOT NULL
+        tax_rate REAL DEFAULT 0, payment_method TEXT, status TEXT DEFAULT 'PAID', qr_status TEXT DEFAULT 'not_applicable', discount_reason TEXT, note TEXT, created_at TEXT NOT NULL
       )
     ''');
     await db.execute('''
@@ -71,10 +72,31 @@ class AppDatabase {
       )
     ''');
     await db.execute('''
-      CREATE TABLE milk_collections(
+CREATE TABLE milk_collections(
         id TEXT PRIMARY KEY, farmer_id TEXT NOT NULL, collection_date TEXT NOT NULL,
         shift TEXT NOT NULL, litres REAL NOT NULL, fat REAL, snf REAL,
         rate REAL NOT NULL, amount REAL NOT NULL, note TEXT, created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE farmer_payments(
+        id TEXT PRIMARY KEY, farmer_id TEXT NOT NULL, amount REAL NOT NULL,
+        method TEXT NOT NULL, note TEXT, created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE loans(
+        id TEXT PRIMARY KEY, name TEXT NOT NULL, lender TEXT NOT NULL,
+        principal REAL NOT NULL, annual_interest_rate REAL NOT NULL DEFAULT 0,
+        interest_method TEXT NOT NULL DEFAULT 'SIMPLE_DAILY_REDUCING',
+        start_date TEXT NOT NULL, active INTEGER DEFAULT 1, note TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE loan_payments(
+        id TEXT PRIMARY KEY, loan_id TEXT NOT NULL, amount REAL NOT NULL,
+        payment_date TEXT NOT NULL, note TEXT, created_at TEXT NOT NULL
       )
     ''');
     await db.execute('''
@@ -96,6 +118,94 @@ class AppDatabase {
         id TEXT PRIMARY KEY, customer_id TEXT NOT NULL, amount REAL NOT NULL,
         channel TEXT NOT NULL, message TEXT, status TEXT DEFAULT 'PENDING',
         created_at TEXT NOT NULL, sent_at TEXT
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE alarms(
+        id TEXT PRIMARY KEY, title TEXT NOT NULL, category TEXT NOT NULL,
+        notes TEXT, due_at TEXT NOT NULL, repeat_rule TEXT NOT NULL DEFAULT 'ONCE',
+        priority TEXT NOT NULL DEFAULT 'NORMAL', target_role TEXT NOT NULL DEFAULT 'admin',
+        enabled INTEGER DEFAULT 1, completed_at TEXT, snoozed_until TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE lucky_draws(
+        id TEXT PRIMARY KEY, month_key TEXT NOT NULL, month_label TEXT NOT NULL,
+        minimum_purchase REAL NOT NULL DEFAULT 1000, announcement TEXT NOT NULL,
+        draw_date TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'OPEN',
+        created_by TEXT, created_at TEXT NOT NULL, published_at TEXT
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE lucky_draw_prizes(
+        id TEXT PRIMARY KEY, draw_id TEXT NOT NULL, prize_rank INTEGER NOT NULL,
+        prize_title TEXT NOT NULL, prize_description TEXT NOT NULL, prize_value TEXT, active INTEGER DEFAULT 1
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE lucky_draw_tokens(
+        id TEXT PRIMARY KEY, draw_id TEXT NOT NULL, token_number TEXT NOT NULL,
+        invoice_id TEXT, customer_id TEXT, customer_name TEXT NOT NULL,
+        identity_reference TEXT, identity_type TEXT, consented INTEGER NOT NULL DEFAULT 0,
+        issued_by TEXT, status TEXT NOT NULL DEFAULT 'ELIGIBLE', created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE lucky_draw_winners(
+        id TEXT PRIMARY KEY, draw_id TEXT NOT NULL, prize_id TEXT NOT NULL,
+        token_id TEXT NOT NULL, token_number TEXT NOT NULL, masked_name TEXT NOT NULL,
+        selected_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE tax_groups(
+        id TEXT PRIMARY KEY, name TEXT NOT NULL, rate REAL NOT NULL DEFAULT 0,
+        active INTEGER DEFAULT 1, created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE payment_splits(
+        id TEXT PRIMARY KEY, invoice_id TEXT NOT NULL, method TEXT NOT NULL,
+        amount REAL NOT NULL, reference TEXT, created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE quotes(
+        id TEXT PRIMARY KEY, quote_no TEXT UNIQUE NOT NULL, customer_id TEXT,
+        subtotal REAL NOT NULL, discount REAL DEFAULT 0, tax REAL DEFAULT 0,
+        total REAL NOT NULL, status TEXT DEFAULT 'DRAFT', note TEXT, created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE quote_items(
+        id TEXT PRIMARY KEY, quote_id TEXT NOT NULL, product_id TEXT NOT NULL,
+        product_name TEXT NOT NULL, qty REAL NOT NULL, price REAL NOT NULL,
+        discount REAL DEFAULT 0, total REAL NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE orders(
+        id TEXT PRIMARY KEY, order_no TEXT UNIQUE NOT NULL, customer_id TEXT,
+        customer_name TEXT NOT NULL, phone TEXT, items_json TEXT NOT NULL,
+        total REAL NOT NULL, status TEXT NOT NULL DEFAULT 'PENDING',
+        order_at TEXT NOT NULL, delivery_at TEXT, reminder_at TEXT,
+        reminder_enabled INTEGER DEFAULT 1, note TEXT, created_at TEXT NOT NULL,
+        delivery_agent_id TEXT, delivery_agent_name TEXT, delivery_agent_phone TEXT,
+        destination_latitude REAL, destination_longitude REAL,
+        last_driver_latitude REAL, last_driver_longitude REAL, last_driver_accuracy REAL,
+        last_driver_at TEXT, driver_distance_meters REAL, tracking_interval_seconds INTEGER DEFAULT 30,
+        arrival_radius_meters REAL DEFAULT 100, call_unlocked INTEGER DEFAULT 0,
+        call_unlocked_at TEXT, call_attempted_at TEXT,
+        route_position INTEGER, delivery_result TEXT DEFAULT 'PENDING',
+        missing_goods_note TEXT, handover_at TEXT
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE lucky_draw_identity_records(
+        id TEXT PRIMARY KEY, token_id TEXT NOT NULL, identity_type TEXT NOT NULL,
+        private_reference TEXT NOT NULL, consented INTEGER NOT NULL DEFAULT 0,
+        retention_until TEXT, created_at TEXT NOT NULL, deleted_at TEXT
       )
     ''');
     await db.execute('''
@@ -132,10 +242,80 @@ class AppDatabase {
     if (oldV < 5) {
       await db.execute('''CREATE TABLE credit_reminders(id TEXT PRIMARY KEY, customer_id TEXT NOT NULL, amount REAL NOT NULL, channel TEXT NOT NULL, message TEXT, status TEXT DEFAULT 'PENDING', created_at TEXT NOT NULL, sent_at TEXT)''');
     }
+    if (oldV < 6) {
+      await db.execute('''CREATE TABLE lucky_draws(id TEXT PRIMARY KEY, month_key TEXT NOT NULL, month_label TEXT NOT NULL, minimum_purchase REAL NOT NULL DEFAULT 1000, announcement TEXT NOT NULL, draw_date TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'OPEN', created_by TEXT, created_at TEXT NOT NULL, published_at TEXT)''');
+      await db.execute('''CREATE TABLE lucky_draw_prizes(id TEXT PRIMARY KEY, draw_id TEXT NOT NULL, prize_rank INTEGER NOT NULL, prize_title TEXT NOT NULL, prize_description TEXT NOT NULL, prize_value TEXT, active INTEGER DEFAULT 1)''');
+      await db.execute('''CREATE TABLE lucky_draw_tokens(id TEXT PRIMARY KEY, draw_id TEXT NOT NULL, token_number TEXT NOT NULL, invoice_id TEXT, customer_id TEXT, customer_name TEXT NOT NULL, identity_reference TEXT, identity_type TEXT, consented INTEGER NOT NULL DEFAULT 0, issued_by TEXT, status TEXT NOT NULL DEFAULT 'ELIGIBLE', created_at TEXT NOT NULL)''');
+      await db.execute('''CREATE TABLE lucky_draw_winners(id TEXT PRIMARY KEY, draw_id TEXT NOT NULL, prize_id TEXT NOT NULL, token_id TEXT NOT NULL, token_number TEXT NOT NULL, masked_name TEXT NOT NULL, selected_at TEXT NOT NULL)''');
+    }
+    if (oldV < 7) {
+      await db.execute('''CREATE TABLE lucky_draw_identity_records(id TEXT PRIMARY KEY, token_id TEXT NOT NULL, identity_type TEXT NOT NULL, private_reference TEXT NOT NULL, consented INTEGER NOT NULL DEFAULT 0, retention_until TEXT, created_at TEXT NOT NULL, deleted_at TEXT)''');
+    }
+    if (oldV < 8) {
+      await db.execute('ALTER TABLE products ADD COLUMN sku TEXT');
+      await db.execute('ALTER TABLE products ADD COLUMN size TEXT');
+      await db.execute('ALTER TABLE products ADD COLUMN color TEXT');
+      await db.execute('ALTER TABLE products ADD COLUMN variant_group TEXT');
+      await db.execute('ALTER TABLE products ADD COLUMN tax_group_id TEXT');
+      await db.execute('ALTER TABLE invoices ADD COLUMN tax_rate REAL DEFAULT 0');
+      await db.execute('''CREATE TABLE tax_groups(id TEXT PRIMARY KEY, name TEXT NOT NULL, rate REAL NOT NULL DEFAULT 0, active INTEGER DEFAULT 1, created_at TEXT NOT NULL)''');
+      await db.execute('''CREATE TABLE payment_splits(id TEXT PRIMARY KEY, invoice_id TEXT NOT NULL, method TEXT NOT NULL, amount REAL NOT NULL, reference TEXT, created_at TEXT NOT NULL)''');
+      await db.execute('''CREATE TABLE quotes(id TEXT PRIMARY KEY, quote_no TEXT UNIQUE NOT NULL, customer_id TEXT, subtotal REAL NOT NULL, discount REAL DEFAULT 0, tax REAL DEFAULT 0, total REAL NOT NULL, status TEXT DEFAULT 'DRAFT', note TEXT, created_at TEXT NOT NULL)''');
+      await db.execute('''CREATE TABLE quote_items(id TEXT PRIMARY KEY, quote_id TEXT NOT NULL, product_id TEXT NOT NULL, product_name TEXT NOT NULL, qty REAL NOT NULL, price REAL NOT NULL, discount REAL DEFAULT 0, total REAL NOT NULL)''');
+    }
+    if (oldV < 9) {
+      await db.execute('''CREATE TABLE orders(id TEXT PRIMARY KEY, order_no TEXT UNIQUE NOT NULL, customer_id TEXT, customer_name TEXT NOT NULL, phone TEXT, items_json TEXT NOT NULL, total REAL NOT NULL, status TEXT NOT NULL DEFAULT 'PENDING', order_at TEXT NOT NULL, delivery_at TEXT, reminder_at TEXT, reminder_enabled INTEGER DEFAULT 1, note TEXT, created_at TEXT NOT NULL)''');
+    }
+    if (oldV < 10) {
+      await db.execute('ALTER TABLE customers ADD COLUMN latitude REAL');
+      await db.execute('ALTER TABLE customers ADD COLUMN longitude REAL');
+      await db.execute('ALTER TABLE customers ADD COLUMN location_accuracy REAL');
+      await db.execute('ALTER TABLE customers ADD COLUMN location_captured_at TEXT');
+    }
+    if (oldV < 11) {
+      await db.execute('ALTER TABLE orders ADD COLUMN delivery_agent_id TEXT');
+      await db.execute('ALTER TABLE orders ADD COLUMN delivery_agent_name TEXT');
+      await db.execute('ALTER TABLE orders ADD COLUMN delivery_agent_phone TEXT');
+      await db.execute('ALTER TABLE orders ADD COLUMN destination_latitude REAL');
+      await db.execute('ALTER TABLE orders ADD COLUMN destination_longitude REAL');
+      await db.execute('ALTER TABLE orders ADD COLUMN last_driver_latitude REAL');
+      await db.execute('ALTER TABLE orders ADD COLUMN last_driver_longitude REAL');
+      await db.execute('ALTER TABLE orders ADD COLUMN last_driver_accuracy REAL');
+      await db.execute('ALTER TABLE orders ADD COLUMN last_driver_at TEXT');
+      await db.execute('ALTER TABLE orders ADD COLUMN driver_distance_meters REAL');
+      await db.execute('ALTER TABLE orders ADD COLUMN tracking_interval_seconds INTEGER DEFAULT 30');
+      await db.execute('ALTER TABLE orders ADD COLUMN arrival_radius_meters REAL DEFAULT 100');
+      await db.execute('ALTER TABLE orders ADD COLUMN call_unlocked INTEGER DEFAULT 0');
+      await db.execute('ALTER TABLE orders ADD COLUMN call_unlocked_at TEXT');
+      await db.execute('ALTER TABLE orders ADD COLUMN call_attempted_at TEXT');
+    }
+    if (oldV < 12) {
+      await db.execute('ALTER TABLE lucky_draw_prizes ADD COLUMN prize_value TEXT');
+    }
+    if (oldV < 13) {
+      await db.execute('ALTER TABLE customers ADD COLUMN milk_rate REAL DEFAULT 0');
+      await db.execute('''CREATE TABLE farmer_payments(id TEXT PRIMARY KEY, farmer_id TEXT NOT NULL, amount REAL NOT NULL, method TEXT NOT NULL, note TEXT, created_at TEXT NOT NULL)''');
+    }
+    if (oldV < 14) {
+      await db.execute('''CREATE TABLE loans(id TEXT PRIMARY KEY, name TEXT NOT NULL, lender TEXT NOT NULL, principal REAL NOT NULL, annual_interest_rate REAL NOT NULL DEFAULT 0, interest_method TEXT NOT NULL DEFAULT 'SIMPLE_DAILY_REDUCING', start_date TEXT NOT NULL, active INTEGER DEFAULT 1, note TEXT, created_at TEXT NOT NULL)''');
+      await db.execute('''CREATE TABLE loan_payments(id TEXT PRIMARY KEY, loan_id TEXT NOT NULL, amount REAL NOT NULL, payment_date TEXT NOT NULL, note TEXT, created_at TEXT NOT NULL)''');
+    }
+    if (oldV < 15) {
+      await db.execute('ALTER TABLE invoices ADD COLUMN discount_reason TEXT');
+    }
+    if (oldV < 16) {
+      await db.execute('ALTER TABLE orders ADD COLUMN route_position INTEGER');
+      await db.execute("ALTER TABLE orders ADD COLUMN delivery_result TEXT DEFAULT 'PENDING'");
+      await db.execute('ALTER TABLE orders ADD COLUMN missing_goods_note TEXT');
+      await db.execute('ALTER TABLE orders ADD COLUMN handover_at TEXT');
+    }
+    if (oldV < 17) {
+      await db.execute('''CREATE TABLE alarms(id TEXT PRIMARY KEY, title TEXT NOT NULL, category TEXT NOT NULL, notes TEXT, due_at TEXT NOT NULL, repeat_rule TEXT NOT NULL DEFAULT 'ONCE', priority TEXT NOT NULL DEFAULT 'NORMAL', target_role TEXT NOT NULL DEFAULT 'admin', enabled INTEGER DEFAULT 1, completed_at TEXT, snoozed_until TEXT, created_at TEXT NOT NULL)''');
+    }
   }
 
-  Future<List<Map<String,Object?>>> query(String table, {String? where, List<Object?>? args}) =>
-      db.query(table, where: where, whereArgs: args);
+  Future<List<Map<String,Object?>>> query(String table, {String? where, List<Object?>? args, String? orderBy}) =>
+      db.query(table, where: where, whereArgs: args, orderBy: orderBy);
 
   Future<int> insert(String table, Map<String,Object?> row) => db.insert(table, row);
   Future<int> update(String table, Map<String,Object?> row, String id) =>
@@ -151,11 +331,68 @@ class AppDatabase {
   Future<List<Map<String, Object?>>> pendingSync() => db.query('sync_queue', where: 'synced=0', orderBy: 'created_at ASC');
   Future<void> markSynced(String id) async => db.update('sync_queue', {'synced': 1}, where: 'id=?', whereArgs: [id]);
 
+  static const syncableTables = {
+    'customers', 'products', 'invoices', 'invoice_items', 'ledger', 'payments', 'advances', 'expenses', 'loans', 'loan_payments',
+    'farmers', 'milk_collections', 'farmer_payments', 'stock_movements', 'returns', 'credit_reminders', 'lucky_draws',
+    'lucky_draw_prizes', 'lucky_draw_tokens', 'lucky_draw_winners', 'tax_groups', 'payment_splits',
+    'quotes', 'quote_items', 'orders', 'alarms',
+  };
+
+  Future<void> applyCloudRecord({required String entity, required String recordId, required String operation, required Map<String, dynamic> payload}) async {
+    if (!syncableTables.contains(entity)) return;
+    if (operation == 'delete') {
+      await delete(entity, recordId);
+      return;
+    }
+    if (operation != 'upsert') return;
+    final row = <String, Object?>{...payload};
+    row['id'] = row['id'] ?? recordId;
+    await db.insert(entity, row, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  static const snapshotTables = [
+    'customers', 'products', 'invoices', 'invoice_items', 'ledger', 'payments', 'advances', 'expenses', 'loans', 'loan_payments',
+    'farmers', 'milk_collections', 'farmer_payments', 'stock_movements', 'returns', 'credit_reminders', 'lucky_draws',
+    'lucky_draw_prizes', 'lucky_draw_tokens', 'lucky_draw_winners', 'lucky_draw_identity_records',
+    'tax_groups', 'payment_splits', 'quotes', 'quote_items', 'orders', 'alarms', 'users', 'audit_logs', 'sync_queue',
+  ];
+
+  Future<String> exportJson() async {
+    final tables = <String, List<Map<String, Object?>>>{};
+    for (final table in snapshotTables) {
+      tables[table] = await db.query(table);
+    }
+    return jsonEncode({'format': 'gajurmukhi-offline-backup', 'schema_version': 17, 'exported_at': DateTime.now().toUtc().toIso8601String(), 'tables': tables});
+  }
+
+  Future<void> importJson(String source) async {
+    final decoded = jsonDecode(source);
+    if (decoded is! Map || decoded['format'] != 'gajurmukhi-offline-backup' || decoded['tables'] is! Map) throw const FormatException('This file is not a supported Gajurmukhi backup');
+    final rawTables = Map<Object?, Object?>.from(decoded['tables'] as Map);
+    final tables = <String, List<Map<String, Object?>>>{};
+    for (final table in snapshotTables) {
+      final rows = rawTables[table];
+      if (rows == null) { tables[table] = []; continue; }
+      if (rows is! List || rows.any((row) => row is! Map)) throw FormatException('Invalid rows in backup table $table');
+      tables[table] = rows.map((row) => Map<String, Object?>.from(row as Map)).toList();
+    }
+    await db.transaction((txn) async {
+      for (final table in snapshotTables.reversed) {
+        await txn.delete(table);
+      }
+      for (final table in snapshotTables) {
+        for (final row in tables[table]!) {
+          await txn.insert(table, row, conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+      }
+    });
+  }
+
   Future<Map<String,num>> totals() async {
-    final sales = await db.rawQuery('SELECT COALESCE(SUM(total),0) v FROM invoices WHERE date(created_at)=date("now","localtime")');
-    final paid = await db.rawQuery('SELECT COALESCE(SUM(paid),0) v FROM invoices WHERE date(created_at)=date("now","localtime")');
-    final expenses = await db.rawQuery('SELECT COALESCE(SUM(amount),0) v FROM expenses WHERE date(created_at)=date("now","localtime")');
-    final milk = await db.rawQuery('SELECT COALESCE(SUM(litres),0) v FROM milk_collections WHERE collection_date=date("now","localtime")');
+    final sales = await db.rawQuery("SELECT COALESCE(SUM(total),0) v FROM invoices WHERE date(created_at)=date('now','localtime')");
+    final paid = await db.rawQuery("SELECT COALESCE(SUM(paid),0) v FROM invoices WHERE date(created_at)=date('now','localtime')");
+    final expenses = await db.rawQuery("SELECT COALESCE(SUM(amount),0) v FROM expenses WHERE date(created_at)=date('now','localtime')");
+    final milk = await db.rawQuery("SELECT COALESCE(SUM(litres),0) v FROM milk_collections WHERE collection_date=date('now','localtime')");
     final due = await db.rawQuery('SELECT COALESCE(SUM(balance),0) v FROM customers');
     return {
       'sales': sales.first['v'] as num,

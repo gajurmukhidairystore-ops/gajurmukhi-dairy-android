@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/business_provider.dart';
+import '../../services/contact_picker_service.dart';
+import '../../services/location_service.dart';
 import '../../services/whatsapp_service.dart';
 
 class CustomersScreen extends StatefulWidget {
@@ -27,13 +31,18 @@ class _CustomersScreenState extends State<CustomersScreen> {
     final value = double.tryParse(amount.text.trim()) ?? 0;
     if (ok == true && value > 0) {
       final id = '${customer['id']}';
-      if (advance) {
-        await widget.p.recordAdvance(id, value, method, note.text.trim().isEmpty ? 'Advance' : note.text.trim());
-      } else {
-        await widget.p.recordPayment(id, value, method, note.text.trim().isEmpty ? 'Customer payment' : note.text.trim());
+      try {
+        if (advance) {
+          await widget.p.recordAdvance(id, value, method, note.text.trim().isEmpty ? 'Advance' : note.text.trim());
+        } else {
+          await widget.p.recordPayment(id, value, method, note.text.trim().isEmpty ? 'Customer payment' : note.text.trim());
+        }
+        if (!mounted) return;
+        ScaffoldMessenger.of(this.context).showSnackBar(const SnackBar(content: Text('Ledger updated')));
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(this.context).showSnackBar(SnackBar(content: Text('Could not update ledger: $error')));
       }
-      if (!mounted) return;
-      ScaffoldMessenger.of(this.context).showSnackBar(const SnackBar(content: Text('Ledger updated')));
     }
   }
 
@@ -63,23 +72,148 @@ class _CustomersScreenState extends State<CustomersScreen> {
     ));
   }
 
+  Future<void> _openMap(Map<String, Object?> customer) async {
+    final lat = (customer['latitude'] as num?)?.toDouble();
+    final lng = (customer['longitude'] as num?)?.toDouble();
+    if (lat == null || lng == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No GPS location saved for this customer')));
+      return;
+    }
+    final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open the map application')));
+    }
+  }
+
+  Future<void> _captureCustomerLocation(Map<String, Object?> customer) async {
+    final position = await ForegroundLocationService().currentPosition();
+    if (position == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enable GPS and grant location permission to capture this address')));
+      return;
+    }
+    try {
+      await widget.p.updateCustomerLocation('${customer['id']}', latitude: position.latitude, longitude: position.longitude, accuracy: position.accuracy);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('GPS location saved (${position.latitude.toStringAsFixed(5)}, ${position.longitude.toStringAsFixed(5)})')));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save customer location: $error')));
+    }
+  }
+
+  Future<void> _setMilkRate(Map<String, Object?> customer) async {
+    final rate = TextEditingController(text: '${customer['milk_rate'] ?? 0}');
+    final value = await showDialog<double>(context: context, builder: (dialogContext) => AlertDialog(
+      title: Text('Fixed milk rate · ${customer['name']}'),
+      content: TextField(controller: rate, autofocus: true, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'NPR per litre', helperText: 'Use 0 to use normal Milk 1 Ltr price.')),
+      actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(dialogContext, double.tryParse(rate.text.trim())), child: const Text('Save rate'))],
+    ));
+    rate.dispose();
+    if (value == null) return;
+    try {
+      await widget.p.updateCustomerMilkRate('${customer['id']}', value);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Party fixed milk rate saved')));
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save fixed rate: $error')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.all(12), children: [
     Row(children: [const Expanded(child: Text('Customer ledger', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold))), FilledButton.icon(onPressed: () => _addCustomer(context), icon: const Icon(Icons.person_add), label: const Text('Add customer'))]),
     const SizedBox(height: 12),
-    ...widget.p.customers.map((c) => Card(child: ListTile(
-      leading: const CircleAvatar(child: Icon(Icons.person)),
-      title: Text('${c['name']}'),
-      subtitle: Text('${c['phone'] ?? ''}\nOutstanding: NPR ${c['balance'] ?? 0}'),
-      isThreeLine: true,
-      onTap: () => _statement(context, c),
-      trailing: PopupMenuButton<String>(onSelected: (v) { if (v == 'payment') _record(context, c, advance: false); if (v == 'advance') _record(context, c, advance: true); if (v == 'statement') _statement(context, c); if (v == 'remind') _remind(context, c); }, itemBuilder: (_) => const [PopupMenuItem(value: 'payment', child: Text('Record payment')), PopupMenuItem(value: 'advance', child: Text('Record advance')), PopupMenuItem(value: 'statement', child: Text('View statement')), PopupMenuItem(value: 'remind', child: Text('Send credit reminder'))]),
-    )))
+    ...widget.p.customers.map((c) {
+      final hasLocation = c['latitude'] != null && c['longitude'] != null;
+      final address = '${c['address'] ?? ''}'.trim();
+      final locationLabel = hasLocation ? 'GPS location saved' : 'GPS location not captured';
+      return Card(child: ListTile(
+        leading: CircleAvatar(child: Icon(hasLocation ? Icons.location_on : Icons.person)),
+        title: Text('${c['name']}'),
+        subtitle: Text('${c['phone'] ?? ''}\n${address.isEmpty ? 'Address not entered' : address}\nOutstanding: NPR ${c['balance'] ?? 0} · Fixed milk rate: NPR ${c['milk_rate'] ?? 0}/L · $locationLabel'),
+        isThreeLine: true,
+        onTap: () => _statement(context, c),
+        trailing: PopupMenuButton<String>(onSelected: (v) { if (v == 'payment') _record(context, c, advance: false); if (v == 'advance') _record(context, c, advance: true); if (v == 'rate') _setMilkRate(c); if (v == 'statement') _statement(context, c); if (v == 'remind') _remind(context, c); if (v == 'capture') _captureCustomerLocation(c); if (v == 'map') _openMap(c); }, itemBuilder: (_) => const [PopupMenuItem(value: 'payment', child: Text('Record payment')), PopupMenuItem(value: 'advance', child: Text('Record advance')), PopupMenuItem(value: 'rate', child: Text('Set fixed milk rate')), PopupMenuItem(value: 'statement', child: Text('View statement')), PopupMenuItem(value: 'remind', child: Text('Send credit reminder')), PopupMenuItem(value: 'capture', child: Text('Capture/update GPS location')), PopupMenuItem(value: 'map', child: Text('Open customer on map'))]),
+      ));
+    })
   ]);
 
   Future<void> _addCustomer(BuildContext context) async {
-    final name = TextEditingController(); final phone = TextEditingController(); final address = TextEditingController();
-    final ok = await showDialog<bool>(context: context, builder: (_) => AlertDialog(title: const Text('Add customer'), content: Column(mainAxisSize: MainAxisSize.min, children: [TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')), TextField(controller: phone, decoration: const InputDecoration(labelText: 'Phone')), TextField(controller: address, decoration: const InputDecoration(labelText: 'Address'))]), actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Save'))]));
-    if (ok == true && name.text.trim().isNotEmpty) await widget.p.addCustomer(name.text.trim(), phone.text.trim(), address.text.trim());
+    final pageContext = context;
+    final name = TextEditingController();
+    final phone = TextEditingController();
+    final address = TextEditingController();
+    final milkRate = TextEditingController(text: '0');
+    Position? capturedPosition;
+    String? locationError;
+    String? contactError;
+    bool locating = false;
+    bool pickingContact = false;
+    final ok = await showDialog<bool>(context: pageContext, builder: (_) => StatefulBuilder(builder: (dialogContext, setDialogState) => AlertDialog(
+      title: const Text('Add customer'),
+      content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
+        Row(children: [
+          Expanded(child: TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Phone'))),
+          const SizedBox(width: 8),
+          IconButton(
+            tooltip: 'Import from phone contacts',
+            onPressed: pickingContact ? null : () async {
+              setDialogState(() { pickingContact = true; contactError = null; });
+              try {
+                final picked = await ContactPickerService().pickPhone();
+                if (picked == null) {
+                  if (dialogContext.mounted) setDialogState(() { pickingContact = false; contactError = 'No phone contact was selected or permission was denied.'; });
+                  return;
+                }
+                if (dialogContext.mounted) {
+                  setDialogState(() {
+                    if (name.text.trim().isEmpty) name.text = picked.name;
+                    phone.text = picked.phone;
+                    pickingContact = false;
+                  });
+                }
+              } catch (error) {
+                if (dialogContext.mounted) setDialogState(() { pickingContact = false; contactError = 'Could not read phone contacts: $error'; });
+              }
+            },
+            icon: pickingContact ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.contacts),
+          ),
+        ]),
+        if (contactError != null) Align(alignment: Alignment.centerLeft, child: Text(contactError!, style: const TextStyle(color: Colors.deepOrange, fontSize: 12))),
+        TextField(controller: address, maxLines: 2, decoration: const InputDecoration(labelText: 'House address / delivery instructions')),
+        TextField(controller: milkRate, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Fixed milk rate (NPR/L, optional)', helperText: 'Use 0 for the normal product price.')),
+        const SizedBox(height: 12),
+        Align(alignment: Alignment.centerLeft, child: OutlinedButton.icon(
+          onPressed: locating ? null : () async {
+            setDialogState(() { locating = true; locationError = null; });
+            final position = await ForegroundLocationService().currentPosition();
+            if (position == null) {
+              setDialogState(() { locating = false; locationError = 'Enable GPS and grant location permission, then try again.'; });
+            } else {
+              capturedPosition = position;
+              setDialogState(() => locating = false);
+            }
+          },
+          icon: locating ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.my_location),
+          label: Text(locating ? 'Reading GPS…' : 'Capture current house GPS location'),
+        )),
+        if (capturedPosition != null) Align(alignment: Alignment.centerLeft, child: Text('Captured: ${capturedPosition!.latitude.toStringAsFixed(5)}, ${capturedPosition!.longitude.toStringAsFixed(5)}', style: TextStyle(color: Theme.of(dialogContext).colorScheme.primary))),
+        if (locationError != null) Align(alignment: Alignment.centerLeft, child: Text(locationError!, style: TextStyle(color: Theme.of(dialogContext).colorScheme.error))),
+        const SizedBox(height: 4),
+        const Align(alignment: Alignment.centerLeft, child: Text('GPS capture is optional, but required for delivery tracking and arrival calling.', style: TextStyle(fontSize: 12))),
+      ])),
+      actions: [TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Save'))],
+    )));
+    if (ok == true && name.text.trim().isNotEmpty) {
+      try {
+        await widget.p.addCustomer(name.text.trim(), phone.text.trim(), address.text.trim(), milkRate: double.tryParse(milkRate.text.trim()) ?? 0, latitude: capturedPosition?.latitude, longitude: capturedPosition?.longitude, locationAccuracy: capturedPosition?.accuracy);
+      } catch (error) {
+        if (!pageContext.mounted) return;
+        ScaffoldMessenger.of(pageContext).showSnackBar(SnackBar(content: Text('Could not save customer: $error')));
+      }
+    }
+    name.dispose(); phone.dispose(); address.dispose(); milkRate.dispose();
   }
 }

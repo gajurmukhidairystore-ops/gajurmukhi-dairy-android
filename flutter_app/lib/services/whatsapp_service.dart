@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'ai_command_service.dart';
+
 class WhatsAppService {
   static const defaultTemplate = '''*GAJURMUKHI DAIRY & STORE*
 _Daily dairy transaction summary_
@@ -23,6 +25,7 @@ _Daily dairy transaction summary_
 *Payment mode:* {{paymentMode}}
 {{upiLine}}
 {{qrStatusLine}}
+{{luckyTokenLine}}
 
 {{paymentNote}}
 Value for Life''';
@@ -45,6 +48,8 @@ Value for Life''';
     '{{upiLine}}',
     '{{qrStatus}}',
     '{{qrStatusLine}}',
+    '{{luckyToken}}',
+    '{{luckyTokenLine}}',
     '{{paymentNote}}',
   ];
 
@@ -78,13 +83,15 @@ Value for Life''';
     String? customerName,
     String? customerPhone,
     double discount = 0,
+    String? discountReason,
     double? due,
     String? paymentMethod,
     String? upiId,
     String qrStatus = 'not_applicable',
+    String? luckyToken,
     String? template,
   }) {
-    String money(double value) => 'NPR ${value.toStringAsFixed(2)}';
+    String money(double value) => AppSettingsService.money(value);
     String qty(double value) => value == value.roundToDouble() ? value.toInt().toString() : value.toStringAsFixed(2);
     String paymentLabel(String? value) {
       if (value == null || value.trim().isEmpty) return 'Not specified';
@@ -117,7 +124,7 @@ Value for Life''';
       'items': lines.join('\n'),
       'subtotal': money(subtotal),
       'discount': money(safeDiscount),
-      'discountLine': safeDiscount > 0 ? '*Discount:* -${money(safeDiscount)}' : '',
+      'discountLine': safeDiscount > 0 ? '*Discount:* -${money(safeDiscount)}${discountReason?.trim().isNotEmpty == true ? ' (${discountReason!.trim()})' : ''}' : '',
       'orderTotal': money(total),
       'paid': money(paid < 0 ? 0 : paid),
       'balanceDue': money(balance),
@@ -126,6 +133,8 @@ Value for Life''';
       'upiLine': upiId?.trim().isNotEmpty == true ? '*UPI:* ${upiId!.trim()}' : '',
       'qrStatus': qrLabel,
       'qrStatusLine': qrStatus != 'not_applicable' ? '*QR payment:* $qrLabel' : '',
+      'luckyToken': luckyToken?.trim() ?? '',
+      'luckyTokenLine': luckyToken?.trim().isNotEmpty == true ? '*Lucky draw token:* ${luckyToken!.trim()}' : '',
       'paymentNote': balance > 0 ? 'Please settle the balance at your convenience.' : 'Payment received in full. Thank you!',
     });
   }

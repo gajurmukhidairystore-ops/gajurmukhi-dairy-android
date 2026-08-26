@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 import 'package:esc_pos_utils_plus/esc_pos_utils_plus.dart';
 
+import 'ai_command_service.dart';
+
 enum ReceiptPaperWidth { mm58, mm80 }
 
 class ThermalService {
@@ -29,9 +31,9 @@ class ThermalService {
       ]);
     }
     bytes += generator.hr();
-    bytes += generator.text('TOTAL  NPR ${total.toStringAsFixed(2)}', styles: const PosStyles(bold: true));
-    bytes += generator.text('PAID   NPR ${paid.toStringAsFixed(2)}');
-    bytes += generator.text('DUE    NPR ${due.toStringAsFixed(2)}');
+    bytes += generator.text('TOTAL  ${AppSettingsService.money(total)}', styles: const PosStyles(bold: true));
+    bytes += generator.text('PAID   ${AppSettingsService.money(paid)}');
+    bytes += generator.text('DUE    ${AppSettingsService.money(due)}');
     bytes += generator.feed(2);
     bytes += generator.cut();
     return Uint8List.fromList(bytes);

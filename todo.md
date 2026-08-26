@@ -196,3 +196,4 @@
 - [x] Make the dashboard scanner a prominent one-tap camera action that directly inserts the scanned product into the active customer bill, with unknown-barcode and permission feedback
 - [x] Add practical operations enhancements: low-stock alerts, daily close summary, sync health, safer destructive actions, and faster dashboard shortcuts
 - [x] Add enhanced validation and audit visibility for billing, inventory, collections, payments, and reminder actions
+- [ ] Trace and correct APK package, branding, build-source, and artifact delivery so the delivered app matches the unified Gajurmukhi One build

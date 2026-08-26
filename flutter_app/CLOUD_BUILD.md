@@ -1,4 +1,4 @@
-# Gajurmukhi Dairy & Store — Phone-Only Cloud Android Build
+# Gajurmukhi Admin — Phone-Only Cloud Android Build
 
 The Flutter Android application is the primary mobile product. The repository includes a GitHub Actions workflow at `../.github/workflows/flutter-android.yml` that runs on a hosted Ubuntu runner, resolves dependencies, runs Flutter analysis and unit tests, and produces three downloadable artifacts in one run: a debug APK, a release APK, and a release AAB.
 

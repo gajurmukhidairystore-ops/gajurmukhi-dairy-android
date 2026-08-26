@@ -8,6 +8,13 @@ double distanceMetersBetween({required double fromLatitude, required double from
 
 String formatDistanceMeters(double meters) => meters >= 1000 ? '${(meters / 1000).toStringAsFixed(2)} km' : '${meters.round()} m';
 
+const double nearCustomerThresholdMeters = 1000.0;
+const double defaultArrivalRadiusMeters = 100.0;
+
+int trackingIntervalSecondsForDistance(double? distanceMeters) => distanceMeters != null && distanceMeters <= nearCustomerThresholdMeters ? 15 : 30;
+
+bool isWithinArrivalRadius({required double distanceMeters, double radiusMeters = defaultArrivalRadiusMeters}) => distanceMeters >= 0 && distanceMeters <= radiusMeters;
+
 class ShopCoordinate {
   final double latitude;
   final double longitude;
@@ -72,5 +79,32 @@ class ForegroundLocationService {
   void dispose() {
     _subscription?.cancel();
     _updates.close();
+  }
+}
+
+class DeliveryTrackingService {
+  StreamSubscription<Position>? _subscription;
+  DateTime? _lastSentAt;
+
+  Future<bool> start({required double destinationLatitude, required double destinationLongitude, required Future<void> Function(Position position, int intervalSeconds) onUpdate}) async {
+    final permissions = ForegroundLocationService();
+    if (!await permissions.ensurePermission()) return false;
+    await stop();
+    _lastSentAt = null;
+    _subscription = Geolocator.getPositionStream(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 20)).listen((position) {
+      final distance = distanceMetersBetween(fromLatitude: position.latitude, fromLongitude: position.longitude, toLatitude: destinationLatitude, toLongitude: destinationLongitude);
+      final intervalSeconds = trackingIntervalSecondsForDistance(distance);
+      final now = DateTime.now();
+      if (_lastSentAt != null && now.difference(_lastSentAt!).inSeconds < intervalSeconds) return;
+      _lastSentAt = now;
+      onUpdate(position, intervalSeconds);
+    });
+    return true;
+  }
+
+  Future<void> stop() async {
+    await _subscription?.cancel();
+    _subscription = null;
+    _lastSentAt = null;
   }
 }

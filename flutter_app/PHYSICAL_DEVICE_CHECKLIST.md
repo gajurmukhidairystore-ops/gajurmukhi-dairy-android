@@ -1,4 +1,4 @@
-# Gajurmukhi Dairy & Store — Phone Validation Checklist
+# Gajurmukhi Admin — Phone Validation Checklist
 
 Use the generated debug APK on the shopkeeper’s Android phone. Record each item as Pass, Fail, or Not available and attach a short note for every failure.
 

@@ -1,4 +1,4 @@
-# Gajurmukhi Dairy & Store — Smart Business App PRO
+# Gajurmukhi Admin — Smart Business App PRO
 
 A production-oriented Flutter architecture for:
 1. Real billing/POS
@@ -49,5 +49,5 @@ flutter build appbundle --release
 
 ## Business defaults
 Currency: NPR
-Business: Gajurmukhi Dairy & Store
+Business: Gajurmukhi Admin
 Tagline: Value for Life
