@@ -230,7 +230,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      if (role == 'shop' || role == 'admin') ...[
+                      if (widget.role == 'shop' || widget.role == 'admin') ...[
                         SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: () => open(1), icon: const Icon(Icons.point_of_sale), label: const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text('SELL / OPEN BILLING', style: TextStyle(fontWeight: FontWeight.w800))))),
                         const SizedBox(height: 10),
                       ],
