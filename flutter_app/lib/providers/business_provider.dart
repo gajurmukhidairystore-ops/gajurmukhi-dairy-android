@@ -244,6 +244,25 @@ class BusinessProvider extends ChangeNotifier {
     await refresh();
   }
 
+  Future<List<Map<String, Object?>>> financialDetails(String kind) async {
+    switch (kind) {
+      case 'sales':
+        return db.db.rawQuery("SELECT i.invoice_no, COALESCE(c.name, 'Walking customer') customer_name, i.total, i.paid, i.due, i.payment_method, i.created_at FROM invoices i LEFT JOIN customers c ON c.id=i.customer_id WHERE date(i.created_at)=date('now','localtime') ORDER BY i.created_at DESC");
+      case 'received':
+        return db.db.rawQuery("SELECT 'Invoice payment' entry_type, i.invoice_no reference_no, COALESCE(c.name, 'Walking customer') party_name, i.paid amount, i.payment_method method, i.created_at FROM invoices i LEFT JOIN customers c ON c.id=i.customer_id WHERE i.paid > 0 AND date(i.created_at)=date('now','localtime') UNION ALL SELECT 'Ledger payment' entry_type, p.id reference_no, COALESCE(c.name, 'Unknown party') party_name, p.amount, p.method, p.created_at FROM payments p LEFT JOIN customers c ON c.id=p.customer_id WHERE date(p.created_at)=date('now','localtime') ORDER BY created_at DESC");
+      case 'farmer_payable':
+        return db.db.rawQuery("SELECT 'Milk collection' entry_type, f.name party_name, m.litres, m.fat, m.snf, m.rate, m.amount, m.shift method, m.created_at FROM milk_collections m LEFT JOIN farmers f ON f.id=m.farmer_id WHERE m.collection_date=date('now','localtime') UNION ALL SELECT 'Farmer payment' entry_type, f.name party_name, NULL litres, NULL fat, NULL snf, NULL rate, -p.amount amount, p.method, p.created_at FROM farmer_payments p LEFT JOIN farmers f ON f.id=p.farmer_id WHERE date(p.created_at)=date('now','localtime') ORDER BY created_at DESC");
+      case 'party_payable':
+        return db.db.rawQuery("SELECT p.name product_name, sm.qty, sm.unit_cost, ABS(sm.qty) * sm.unit_cost amount, sm.note, sm.created_at FROM stock_movements sm LEFT JOIN products p ON p.id=sm.product_id WHERE sm.type='ADJUSTMENT_IN' AND date(sm.created_at)=date('now','localtime') ORDER BY sm.created_at DESC");
+      case 'customer_receivable':
+        return db.db.rawQuery("SELECT i.invoice_no, c.name customer_name, i.total, i.paid, i.due, i.created_at FROM invoices i INNER JOIN customers c ON c.id=i.customer_id WHERE i.due > 0 AND date(i.created_at)=date('now','localtime') ORDER BY i.created_at DESC");
+      case 'walkin_receivable':
+        return db.db.rawQuery("SELECT i.invoice_no, 'Walking customer' customer_name, i.total, i.paid, i.due, i.created_at FROM invoices i WHERE i.customer_id IS NULL AND i.due > 0 AND date(i.created_at)=date('now','localtime') ORDER BY i.created_at DESC");
+      default:
+        throw ArgumentError('Unsupported financial detail type');
+    }
+  }
+
   Future<void> addLoan({required String name, required String lender, required double principal, required double annualInterestRate, required DateTime startDate, String note = ''}) async {
     if (name.trim().isEmpty || lender.trim().isEmpty) throw ArgumentError('Loan name and lender are required');
     if (principal <= 0) throw ArgumentError('Opening principal must be greater than zero');

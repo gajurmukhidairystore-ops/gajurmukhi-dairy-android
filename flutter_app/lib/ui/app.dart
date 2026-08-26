@@ -431,6 +431,9 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int index = 0;
   bool syncing = false;
+  int pendingSyncCount = 0;
+  DateTime? lastSyncAt;
+  String? syncError;
   String? pendingBarcode;
 
   @override
@@ -440,8 +443,10 @@ class _MainShellState extends State<MainShell> {
       if (!mounted) return;
       final name = widget.session.name.trim().isEmpty ? widget.session.username : widget.session.name;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(WelcomeService.message(time: DateTime.now(), name: name, role: widget.session.role)), duration: const Duration(seconds: 4)));
+      final provider = context.read<BusinessProvider>();
+      await loadSyncStatus(provider);
       final cloud = MobileCloudService();
-      if (await cloud.savedSession() != null && mounted) await syncCloud(context.read<BusinessProvider>());
+      if (await cloud.savedSession() != null && mounted) await syncCloud(provider);
     });
   }
 
@@ -464,9 +469,16 @@ class _MainShellState extends State<MainShell> {
     });
   }
 
+  Future<void> loadSyncStatus(BusinessProvider provider) async {
+    final prefs = await SharedPreferences.getInstance();
+    final pending = (await provider.db.pendingSync()).length;
+    final cursor = DateTime.tryParse(prefs.getString('gajurmukhi_cloud_sync_cursor') ?? '');
+    if (mounted) setState(() { pendingSyncCount = pending; lastSyncAt = cursor; });
+  }
+
   Future<void> syncCloud(BusinessProvider provider) async {
     if (syncing) return;
-    setState(() => syncing = true);
+    setState(() { syncing = true; syncError = null; });
     try {
       final cloud = MobileCloudService();
       final session = await cloud.savedSession();
@@ -477,9 +489,14 @@ class _MainShellState extends State<MainShell> {
       final report = await AuthenticatedSyncCoordinator(db: provider.db, cloud: cloud, session: session).syncNow(since: since);
       await prefs.setString('gajurmukhi_cloud_sync_cursor', report.serverTime.toIso8601String());
       await provider.refresh();
+      if (mounted) setState(() { pendingSyncCount = report.pendingAfterPush; lastSyncAt = report.serverTime; syncError = report.pendingAfterPush == 0 ? null : 'Some local changes are waiting for the next retry.'; });
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(report.pendingAfterPush == 0 ? 'Cloud sync complete. ${report.received} shared updates received.' : 'Sync partial: ${report.pendingAfterPush} local changes will retry. ${report.received} shared updates received.')));
     } catch (error) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Cloud sync could not complete: $error')));
+      final pending = (await provider.db.pendingSync()).length;
+      if (mounted) {
+        setState(() { pendingSyncCount = pending; syncError = '$error'; });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Cloud sync could not complete: $error')));
+      }
     }
     if (mounted) setState(() => syncing = false);
   }
@@ -488,7 +505,7 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     final p = context.watch<BusinessProvider>();
     final screens = [
-      DashboardScreen(p, onNavigate: navigate, onScanToBill: scanFromDashboard, role: widget.session.role),
+      DashboardScreen(p, onNavigate: navigate, onScanToBill: scanFromDashboard, role: widget.session.role, syncing: syncing, pendingSyncCount: pendingSyncCount, lastSyncAt: lastSyncAt, syncError: syncError, onSync: () => syncCloud(p)),
       BillingScreen(p, initialBarcode: pendingBarcode, onInitialBarcodeConsumed: () {
         if (mounted && pendingBarcode != null) setState(() => pendingBarcode = null);
       }),
@@ -507,7 +524,7 @@ class _MainShellState extends State<MainShell> {
     ];
     const navigationTargets = [0, 5, 2, 4, 7];
     final selectedNavigationIndex = navigationTargets.indexOf(index);
-    final activeScreen = canAccess(index) ? screens[index] : DashboardScreen(p, onNavigate: navigate, role: widget.session.role);
+    final activeScreen = canAccess(index) ? screens[index] : DashboardScreen(p, onNavigate: navigate, role: widget.session.role, syncing: syncing, pendingSyncCount: pendingSyncCount, lastSyncAt: lastSyncAt, syncError: syncError, onSync: () => syncCloud(p));
     return Scaffold(
       appBar: index == 0 ? null : AppBar(
         title: Text('${AppProfile.current.name} · ${widget.session.role.toUpperCase()}'),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../providers/business_provider.dart';
 import '../../services/nepali_date_service.dart';
+import '../../services/whatsapp_service.dart';
 
 bool canSubmitPayment({required String? customerId, required String amountText, required bool saving}) {
   final amount = double.tryParse(amountText) ?? 0;
@@ -19,7 +21,12 @@ class DashboardScreen extends StatefulWidget {
   final ValueChanged<int>? onNavigate;
   final VoidCallback? onScanToBill;
   final String role;
-  const DashboardScreen(this.p, {super.key, this.onNavigate, this.onScanToBill, this.role = 'admin'});
+  final bool syncing;
+  final int pendingSyncCount;
+  final DateTime? lastSyncAt;
+  final String? syncError;
+  final VoidCallback? onSync;
+  const DashboardScreen(this.p, {super.key, this.onNavigate, this.onScanToBill, this.role = 'admin', this.syncing = false, this.pendingSyncCount = 0, this.lastSyncAt, this.syncError, this.onSync});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -50,6 +57,76 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String monthLabel(DateTime date) => NepaliDateService.fromAd(date);
 
   void open(int index) => widget.onNavigate?.call(index);
+
+  String _money(Object? value) => 'NPR ${((value as num?) ?? 0).toStringAsFixed(2)}';
+
+  Future<void> showFinancialDetails({required String kind, required String title, required num total, required Color color}) async {
+    final rows = await p.financialDetails(kind);
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.68,
+        maxChildSize: 0.92,
+        builder: (_, controller) => Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text(title, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 4),
+            Text('Today · ${_money(total)}', style: TextStyle(color: color, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 12),
+            Expanded(
+              child: rows.isEmpty
+                  ? const Center(child: Text('No matching records for today.'))
+                  : ListView.separated(
+                      controller: controller,
+                      itemCount: rows.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (_, index) {
+                        final row = rows[index];
+                        final party = '${row['customer_name'] ?? row['party_name'] ?? row['product_name'] ?? 'Entry'}';
+                        final amountValue = (row['amount'] ?? row['due'] ?? row['total'] ?? 0) as num;
+                        final secondary = kind == 'sales'
+                            ? '${row['invoice_no']} · Paid ${_money(row['paid'])} · Due ${_money(row['due'])}'
+                            : kind == 'farmer_payable'
+                                ? '${row['entry_type']} · ${row['method'] ?? ''}${row['litres'] == null ? '' : ' · ${row['litres']} L · FAT ${row['fat']} · SNF ${row['snf']}'}'
+                                : kind == 'party_payable'
+                                    ? '${row['qty']} units · ${row['note'] ?? 'Stock received'}'
+                                    : '${row['invoice_no'] ?? row['reference_no'] ?? ''} · ${row['method'] ?? row['payment_method'] ?? ''}';
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: CircleAvatar(backgroundColor: color.withOpacity(.12), foregroundColor: color, child: Icon(kind.contains('payable') ? Icons.arrow_upward : Icons.arrow_downward)),
+                          title: Text(party, style: const TextStyle(fontWeight: FontWeight.w700)),
+                          subtitle: Text('$secondary\n${row['created_at'] ?? ''}'),
+                          isThreeLine: true,
+                          trailing: Text(_money(amountValue), style: TextStyle(color: color, fontWeight: FontWeight.w800)),
+                        );
+                      },
+                    ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Future<void> openCustomerContact(Map<String, Object?> customer, {required bool whatsapp}) async {
+    final phone = '${customer['phone'] ?? ''}'.replaceAll(RegExp(r'[^0-9+]'), '');
+    if (phone.isEmpty) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No phone number saved for this customer')));
+      return;
+    }
+    final name = '${customer['name'] ?? 'Customer'}';
+    final uri = whatsapp
+        ? Uri.parse('https://wa.me/${phone.replaceFirst('+', '')}?text=${Uri.encodeComponent('Hello $name, this is Gajurmukhi Dairy & Store.')}')
+        : Uri(scheme: 'tel', path: phone);
+    if (!await launchUrl(uri, mode: whatsapp ? LaunchMode.externalApplication : LaunchMode.externalApplication) && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open ${whatsapp ? 'WhatsApp' : 'the phone dialer'}')));
+    }
+  }
 
   Future<void> showPayDialog() async {
     final pageContext = context;
@@ -187,18 +264,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ],
                       ),
                       const SizedBox(height: 6),
-                      _SummaryCard(milk: milk, amount: amount, due: due, received: received),
+                      _SyncStatusCard(syncing: widget.syncing, pending: widget.pendingSyncCount, lastSyncAt: widget.lastSyncAt, error: widget.syncError, onSync: widget.onSync ?? p.refresh),
+                      const SizedBox(height: 10),
+                      _SummaryCard(milk: milk, amount: amount, due: due, received: received, onAmountTap: () => showFinancialDetails(kind: 'sales', title: 'Today’s sales', total: amount, color: const Color(0xff145c43)), onReceivedTap: () => showFinancialDetails(kind: 'received', title: 'Money received today', total: received, color: const Color(0xff4ca55b))),
                       const SizedBox(height: 10),
                       Row(children: [
-                        Expanded(child: _MoneyCard(icon: Icons.arrow_upward_rounded, label: 'Pay farmers today', value: farmerPayableToday, color: const Color(0xffb34b42), subtitle: 'Milk less payments')),
+                        Expanded(child: _MoneyCard(icon: Icons.arrow_upward_rounded, label: 'Pay farmers today', value: farmerPayableToday, color: const Color(0xffb34b42), subtitle: 'Milk less payments', onTap: () => showFinancialDetails(kind: 'farmer_payable', title: 'Farmer payable detail', total: farmerPayableToday, color: const Color(0xffb34b42)))),
                         const SizedBox(width: 8),
-                        Expanded(child: _MoneyCard(icon: Icons.storefront_outlined, label: 'Pay parties today', value: partyPayable, color: const Color(0xffb34b42), subtitle: 'Goods received today at cost')),
+                        Expanded(child: _MoneyCard(icon: Icons.storefront_outlined, label: 'Pay parties today', value: partyPayable, color: const Color(0xffb34b42), subtitle: 'Goods received today at cost', onTap: () => showFinancialDetails(kind: 'party_payable', title: 'Party purchase detail', total: partyPayable, color: const Color(0xffb34b42)))),
                       ]),
                       const SizedBox(height: 8),
                       Row(children: [
-                        Expanded(child: _MoneyCard(icon: Icons.arrow_downward_rounded, label: 'Receive customers today', value: customerReceivable, color: const Color(0xff16834b), subtitle: 'Registered customer bills due')),
+                        Expanded(child: _MoneyCard(icon: Icons.arrow_downward_rounded, label: 'Receive customers today', value: customerReceivable, color: const Color(0xff16834b), subtitle: 'Registered customer bills due', onTap: () => showFinancialDetails(kind: 'customer_receivable', title: 'Customer receivable detail', total: customerReceivable, color: const Color(0xff16834b)))),
                         const SizedBox(width: 8),
-                        Expanded(child: _MoneyCard(icon: Icons.shopping_bag_outlined, label: 'Receive walking customer', value: walkInReceivableToday, color: const Color(0xff16834b), subtitle: 'Unpaid walking-customer bills')),
+                        Expanded(child: _MoneyCard(icon: Icons.shopping_bag_outlined, label: 'Receive walking customer', value: walkInReceivableToday, color: const Color(0xff16834b), subtitle: 'Unpaid walking-customer bills', onTap: () => showFinancialDetails(kind: 'walkin_receivable', title: 'Walking-customer receivable detail', total: walkInReceivableToday, color: const Color(0xff16834b)))),
                       ]),
                       const SizedBox(height: 10),
                       SizedBox(
@@ -310,7 +389,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       if (customers.isEmpty)
                         const Padding(padding: EdgeInsets.all(24), child: Text('No customer entries yet. Add a customer to start the ledger.'))
                       else
-                        ...customers.map((customer) => _CustomerRow(customer: customer, onAdd: () => open(2))),
+                        ...customers.map((customer) => _CustomerRow(customer: customer, onAdd: () => open(2), onCall: () => openCustomerContact(customer, whatsapp: false), onWhatsApp: () => openCustomerContact(customer, whatsapp: true))),
                       const SizedBox(height: 100),
                     ],
                   ),
@@ -335,12 +414,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
+class _SyncStatusCard extends StatelessWidget {
+  final bool syncing;
+  final int pending;
+  final DateTime? lastSyncAt;
+  final String? error;
+  final VoidCallback onSync;
+  const _SyncStatusCard({required this.syncing, required this.pending, required this.lastSyncAt, required this.error, required this.onSync});
+
+  String _lastSyncLabel() {
+    if (lastSyncAt == null) return 'Not synced on this device yet';
+    final elapsed = DateTime.now().difference(lastSyncAt!.toLocal());
+    if (elapsed.inMinutes < 1) return 'Last successful sync just now';
+    if (elapsed.inHours < 1) return 'Last successful sync ${elapsed.inMinutes} min ago';
+    return 'Last successful sync ${lastSyncAt!.toLocal().toString().substring(0, 16)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasIssue = error != null || pending > 0;
+    final color = error != null ? const Color(0xffb34b42) : hasIssue ? const Color(0xffc47a16) : const Color(0xff16834b);
+    final title = syncing ? 'Syncing shared cloud…' : error != null ? 'Sync needs attention' : pending > 0 ? 'Local changes waiting to sync' : 'Cloud sync healthy';
+    final detail = error ?? (pending > 0 ? '$pending change${pending == 1 ? '' : 's'} will retry automatically.' : _lastSyncLabel());
+    return Card(
+      elevation: 0,
+      color: color.withOpacity(.09),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
+        leading: CircleAvatar(backgroundColor: Colors.white, foregroundColor: color, child: Icon(error != null ? Icons.cloud_off : syncing ? Icons.sync : hasIssue ? Icons.cloud_upload_outlined : Icons.cloud_done_outlined)),
+        title: Text(title, style: TextStyle(color: color, fontWeight: FontWeight.w800)),
+        subtitle: Text(detail, maxLines: 2, overflow: TextOverflow.ellipsis),
+        trailing: TextButton.icon(onPressed: syncing ? null : onSync, icon: Icon(error != null ? Icons.refresh : Icons.sync, size: 17), label: Text(error != null ? 'Retry' : 'Sync')),
+      ),
+    );
+  }
+}
+
 class _SummaryCard extends StatelessWidget {
   final num milk;
   final num amount;
   final num due;
   final num received;
-  const _SummaryCard({required this.milk, required this.amount, required this.due, required this.received});
+  final VoidCallback? onAmountTap;
+  final VoidCallback? onReceivedTap;
+  const _SummaryCard({required this.milk, required this.amount, required this.due, required this.received, this.onAmountTap, this.onReceivedTap});
 
   @override
   Widget build(BuildContext context) => Card(
@@ -354,14 +472,14 @@ class _SummaryCard extends StatelessWidget {
               Row(
                 children: [
                   _Metric(label: 'Milk', value: '${milk.toStringAsFixed(1)} L', color: const Color(0xff20252c)),
-                  _Metric(label: 'Amount', value: 'NPR${amount.toStringAsFixed(0)}', color: const Color(0xff145c43)),
+                  _Metric(label: 'Amount', value: 'NPR${amount.toStringAsFixed(0)}', color: const Color(0xff145c43), onTap: onAmountTap),
                   _Metric(label: 'Due', value: 'NPR${due.toStringAsFixed(0)}', color: const Color(0xffd64d4d)),
                 ],
               ),
               const Divider(height: 16),
               Row(
                 children: [
-                  Expanded(child: Text('Received\nNPR${received.toStringAsFixed(0)}', style: const TextStyle(color: Color(0xff4ca55b), fontSize: 16, height: 1.35))),
+                  Expanded(child: InkWell(onTap: onReceivedTap, borderRadius: BorderRadius.circular(10), child: Padding(padding: const EdgeInsets.all(4), child: Text('Received\nNPR${received.toStringAsFixed(0)}', style: const TextStyle(color: Color(0xff4ca55b), fontSize: 16, height: 1.35)))),
                   DecoratedBox(
                     decoration: BoxDecoration(color: const Color(0xffe4f2ff), borderRadius: BorderRadius.circular(24)),
                     child: Padding(padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8), child: Text('Outstanding: NPR${due.toStringAsFixed(0)}', style: const TextStyle(color: Color(0xff176acb), fontSize: 13))),
@@ -380,16 +498,20 @@ class _MoneyCard extends StatelessWidget {
   final num value;
   final Color color;
   final String subtitle;
-  const _MoneyCard({required this.icon, required this.label, required this.value, required this.color, required this.subtitle});
+  final VoidCallback? onTap;
+  const _MoneyCard({required this.icon, required this.label, required this.value, required this.color, required this.subtitle, this.onTap});
 
   @override
   Widget build(BuildContext context) => Card(
         elevation: 0,
         color: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Icon(icon, color: color, size: 21),
             const SizedBox(height: 6),
             Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: Colors.black54)),
@@ -397,7 +519,8 @@ class _MoneyCard extends StatelessWidget {
             Text('NPR ${value.toStringAsFixed(0)}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: color)),
             const SizedBox(height: 2),
             Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, color: Colors.black45)),
-          ]),
+            ]),
+          ),
         ),
       );
 }
@@ -406,13 +529,18 @@ class _Metric extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
-  const _Metric({required this.label, required this.value, required this.color});
+  final VoidCallback? onTap;
+  const _Metric({required this.label, required this.value, required this.color, this.onTap});
 
   @override
   Widget build(BuildContext context) => Expanded(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 5),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(color: Colors.black54, fontSize: 13)), const SizedBox(height: 5), Text(value, style: TextStyle(color: color, fontSize: 21, fontWeight: FontWeight.w700))]),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(color: Colors.black54, fontSize: 13)), const SizedBox(height: 5), Text(value, style: TextStyle(color: color, fontSize: 21, fontWeight: FontWeight.w700))]),
+          ),
         ),
       );
 }
@@ -457,7 +585,9 @@ class _FilterChip extends StatelessWidget {
 class _CustomerRow extends StatelessWidget {
   final Map<String, Object?> customer;
   final VoidCallback onAdd;
-  const _CustomerRow({required this.customer, required this.onAdd});
+  final VoidCallback onCall;
+  final VoidCallback onWhatsApp;
+  const _CustomerRow({required this.customer, required this.onAdd, required this.onCall, required this.onWhatsApp});
 
   @override
   Widget build(BuildContext context) {
@@ -473,7 +603,8 @@ class _CustomerRow extends StatelessWidget {
           const SizedBox(width: 11),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)), Text('${customer['phone'] ?? 'No phone'}', style: const TextStyle(color: Colors.black45, fontSize: 12))])),
           Text(balance > 0 ? 'Due: NPR${balance.toStringAsFixed(0)}' : 'Due: NPR0', style: TextStyle(color: balance > 0 ? const Color(0xffd64d4d) : const Color(0xff4ca55b), fontWeight: FontWeight.w700)),
-          const SizedBox(width: 8),
+          IconButton(tooltip: 'Call customer', onPressed: onCall, icon: const Icon(Icons.call_outlined, size: 19)),
+          IconButton(tooltip: 'WhatsApp customer', onPressed: onWhatsApp, icon: const Icon(Icons.chat_outlined, size: 19)),
           TextButton(onPressed: onAdd, child: const Text('+ Add')),
         ],
       ),
