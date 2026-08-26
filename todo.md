@@ -191,3 +191,4 @@
 - [ ] Ensure the in-place update visibly includes one front-page camera scanner and a department-store-style inventory screen with Add item and editable selling price.
 - [ ] Rebuild a fresh Gajurmukhi One release with the front-page barcode scanner, direct scan-to-bill flow, and department-store-style inventory price controls while retaining the old APK as a fallback.
 - [ ] Build an embedded Admin-only AI Media Studio for branded social-media images, captions, offers, festival posts, WhatsApp Status content, and media drafts with channel/language selection, preview, confirmation, and native sharing.
+- [ ] Add an offline-first in-app alarm center for payments, farmer settlements, customer dues, loans, milk collection, deliveries, stock checks, and custom tasks, with date/time, repeat, priority, role visibility, Android notifications, snooze, completion, and history.

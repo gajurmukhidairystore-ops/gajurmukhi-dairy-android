@@ -24,6 +24,7 @@ import 'screens/music.dart';
 import 'screens/orders.dart';
 import 'screens/lucky_draw.dart';
 import 'screens/loans.dart';
+import 'screens/alarms.dart';
 import 'screens/reports.dart';
 import 'screens/stock.dart';
 import 'screens/users.dart';
@@ -489,12 +490,13 @@ class _MainShellState extends State<MainShell> {
         actions: [
           IconButton(onPressed: syncing ? null : () => syncCloud(p), tooltip: 'Sync shared cloud', icon: syncing ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.cloud_sync)),
               PopupMenuButton<String>(
-                onSelected: (value) { if (value == 'games') navigate(8); if (value == 'music') navigate(9); if (value == 'lucky_draw') navigate(10); if (value == 'orders') navigate(11); if (value == 'browser') navigate(12); if (value == 'loans') navigate(13); if (value == 'logout') Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => LocalAuthGate(db: p.db)), (_) => false); if (value == 'settings') Navigator.of(context).push(MaterialPageRoute(builder: (_) => BiometricSettingsScreen(auth: LocalAuthService(p.db), session: widget.session))); if (value == 'users' && widget.session.role == 'admin') Navigator.of(context).push(MaterialPageRoute(builder: (_) => UsersScreen(p.db))); },
+                onSelected: (value) { if (value == 'games') navigate(8); if (value == 'music') navigate(9); if (value == 'lucky_draw') navigate(10); if (value == 'orders') navigate(11); if (value == 'browser') navigate(12); if (value == 'loans') navigate(13); if (value == 'alarms') Navigator.of(context).push(MaterialPageRoute(builder: (_) => AlarmsScreen(p, role: widget.session.role))); if (value == 'logout') Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => LocalAuthGate(db: p.db)), (_) => false); if (value == 'settings') Navigator.of(context).push(MaterialPageRoute(builder: (_) => BiometricSettingsScreen(auth: LocalAuthService(p.db), session: widget.session))); if (value == 'users' && widget.session.role == 'admin') Navigator.of(context).push(MaterialPageRoute(builder: (_) => UsersScreen(p.db))); },
               itemBuilder: (_) => [
               const PopupMenuItem(value: 'games', child: Text('Daily progress & rewards')),
               const PopupMenuItem(value: 'music', child: Text('YouTube Music')),
                 if (widget.session.role == 'admin') const PopupMenuItem(value: 'users', child: Text('Users & Roles')),
                 if (widget.session.role == 'admin') const PopupMenuItem(value: 'loans', child: Text('Loan accounts')),
+              const PopupMenuItem(value: 'alarms', child: Text('Alarms & reminders')),
               if (widget.session.role == 'admin' || widget.session.role == 'shop' || widget.session.role == 'customer') const PopupMenuItem(value: 'lucky_draw', child: Text('Monthly Lucky Draw')),
               if (widget.session.role == 'admin' || widget.session.role == 'shop' || widget.session.role == 'customer') const PopupMenuItem(value: 'orders', child: Text('Orders & Reminders')),
               if (widget.session.role == 'admin' || widget.session.role == 'shop' || widget.session.role == 'collector' || widget.session.role == 'customer') const PopupMenuItem(value: 'browser', child: Text('In-app browser')),

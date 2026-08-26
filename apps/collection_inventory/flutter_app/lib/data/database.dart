@@ -7,7 +7,7 @@ class AppDatabase {
 
   Future<void> init({String? path}) async {
     final p = path ?? join(await getDatabasesPath(), 'gajurmukhi_pro.db');
-    db = await openDatabase(p, version: 16, onCreate: _create, onUpgrade: _upgrade);
+    db = await openDatabase(p, version: 17, onCreate: _create, onUpgrade: _upgrade);
   }
 
   Future<void> _create(Database db, int version) async {
@@ -118,6 +118,15 @@ CREATE TABLE milk_collections(
         id TEXT PRIMARY KEY, customer_id TEXT NOT NULL, amount REAL NOT NULL,
         channel TEXT NOT NULL, message TEXT, status TEXT DEFAULT 'PENDING',
         created_at TEXT NOT NULL, sent_at TEXT
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE alarms(
+        id TEXT PRIMARY KEY, title TEXT NOT NULL, category TEXT NOT NULL,
+        notes TEXT, due_at TEXT NOT NULL, repeat_rule TEXT NOT NULL DEFAULT 'ONCE',
+        priority TEXT NOT NULL DEFAULT 'NORMAL', target_role TEXT NOT NULL DEFAULT 'admin',
+        enabled INTEGER DEFAULT 1, completed_at TEXT, snoozed_until TEXT,
+        created_at TEXT NOT NULL
       )
     ''');
     await db.execute('''
@@ -300,6 +309,9 @@ CREATE TABLE milk_collections(
       await db.execute('ALTER TABLE orders ADD COLUMN missing_goods_note TEXT');
       await db.execute('ALTER TABLE orders ADD COLUMN handover_at TEXT');
     }
+    if (oldV < 17) {
+      await db.execute('''CREATE TABLE alarms(id TEXT PRIMARY KEY, title TEXT NOT NULL, category TEXT NOT NULL, notes TEXT, due_at TEXT NOT NULL, repeat_rule TEXT NOT NULL DEFAULT 'ONCE', priority TEXT NOT NULL DEFAULT 'NORMAL', target_role TEXT NOT NULL DEFAULT 'admin', enabled INTEGER DEFAULT 1, completed_at TEXT, snoozed_until TEXT, created_at TEXT NOT NULL)''');
+    }
   }
 
   Future<List<Map<String,Object?>>> query(String table, {String? where, List<Object?>? args, String? orderBy}) =>
@@ -323,7 +335,7 @@ CREATE TABLE milk_collections(
     'customers', 'products', 'invoices', 'invoice_items', 'ledger', 'payments', 'advances', 'expenses', 'loans', 'loan_payments',
     'farmers', 'milk_collections', 'farmer_payments', 'stock_movements', 'returns', 'credit_reminders', 'lucky_draws',
     'lucky_draw_prizes', 'lucky_draw_tokens', 'lucky_draw_winners', 'tax_groups', 'payment_splits',
-    'quotes', 'quote_items', 'orders',
+    'quotes', 'quote_items', 'orders', 'alarms',
   };
 
   Future<void> applyCloudRecord({required String entity, required String recordId, required String operation, required Map<String, dynamic> payload}) async {
@@ -342,7 +354,7 @@ CREATE TABLE milk_collections(
     'customers', 'products', 'invoices', 'invoice_items', 'ledger', 'payments', 'advances', 'expenses', 'loans', 'loan_payments',
     'farmers', 'milk_collections', 'farmer_payments', 'stock_movements', 'returns', 'credit_reminders', 'lucky_draws',
     'lucky_draw_prizes', 'lucky_draw_tokens', 'lucky_draw_winners', 'lucky_draw_identity_records',
-    'tax_groups', 'payment_splits', 'quotes', 'quote_items', 'orders', 'users', 'audit_logs', 'sync_queue',
+    'tax_groups', 'payment_splits', 'quotes', 'quote_items', 'orders', 'alarms', 'users', 'audit_logs', 'sync_queue',
   ];
 
   Future<String> exportJson() async {
@@ -350,7 +362,7 @@ CREATE TABLE milk_collections(
     for (final table in snapshotTables) {
       tables[table] = await db.query(table);
     }
-    return jsonEncode({'format': 'gajurmukhi-offline-backup', 'schema_version': 16, 'exported_at': DateTime.now().toUtc().toIso8601String(), 'tables': tables});
+    return jsonEncode({'format': 'gajurmukhi-offline-backup', 'schema_version': 17, 'exported_at': DateTime.now().toUtc().toIso8601String(), 'tables': tables});
   }
 
   Future<void> importJson(String source) async {

@@ -16,6 +16,7 @@ class BusinessProvider extends ChangeNotifier {
   List<Map<String,Object?>> milk = [];
   List<Map<String,Object?>> farmerPayments = [];
   List<Map<String,Object?>> loans = [];
+  List<Map<String,Object?>> alarms = [];
   Map<String,num> totals = {};
   List<Map<String,Object?>> luckyDraws = [];
   List<Map<String,Object?>> luckyDrawPrizes = [];
@@ -42,6 +43,7 @@ class BusinessProvider extends ChangeNotifier {
     milk = await db.query('milk_collections', where: "collection_date=date('now','localtime')");
     farmerPayments = await db.query('farmer_payments', orderBy: 'created_at DESC');
     loans = await db.query('loans', where: 'active=1', orderBy: 'start_date DESC');
+    alarms = await db.query('alarms', orderBy: 'due_at ASC');
     totals = await db.totals();
     luckyDraws = await db.query('lucky_draws', orderBy: 'created_at DESC');
     luckyDrawPrizes = await db.query('lucky_draw_prizes', orderBy: 'prize_rank ASC');
@@ -50,6 +52,61 @@ class BusinessProvider extends ChangeNotifier {
     orders = await db.query('orders', orderBy: 'created_at DESC');
     taxGroups = await db.query('tax_groups', where: 'active=1', orderBy: 'name ASC');
     notifyListeners();
+  }
+
+  Future<void> createAlarm({required String title, required String category, required DateTime dueAt, String notes = '', String repeatRule = 'ONCE', String priority = 'NORMAL', String targetRole = 'admin'}) async {
+    if (title.trim().isEmpty) throw ArgumentError('Alarm title is required');
+    if (!dueAt.isAfter(DateTime.now())) throw ArgumentError('Alarm time must be in the future');
+    const repeats = {'ONCE', 'DAILY', 'WEEKLY'};
+    if (!repeats.contains(repeatRule)) throw ArgumentError('Unsupported repeat rule');
+    const priorities = {'LOW', 'NORMAL', 'HIGH'};
+    if (!priorities.contains(priority)) throw ArgumentError('Unsupported priority');
+    const roles = {'admin', 'shop', 'collector', 'customer', 'all'};
+    if (!roles.contains(targetRole)) throw ArgumentError('Unsupported target role');
+    final id = uuid.v4();
+    final row = <String, dynamic>{'id': id, 'title': title.trim(), 'category': category, 'notes': notes.trim(), 'due_at': dueAt.toIso8601String(), 'repeat_rule': repeatRule, 'priority': priority, 'target_role': targetRole, 'enabled': 1, 'created_at': DateTime.now().toIso8601String()};
+    await db.insert('alarms', row);
+    await db.enqueueSync(entity: 'alarms', entityId: id, operation: 'upsert', payload: row);
+    await refresh();
+  }
+
+  Future<void> updateAlarm(String id, {String? title, String? notes, DateTime? dueAt, String? repeatRule, String? priority, String? targetRole, bool? enabled}) async {
+    if (title != null && title.trim().isEmpty) throw ArgumentError('Alarm title is required');
+    if (dueAt != null && !dueAt.isAfter(DateTime.now())) throw ArgumentError('Alarm time must be in the future');
+    final changes = <String, dynamic>{};
+    if (title != null) changes['title'] = title.trim();
+    if (notes != null) changes['notes'] = notes.trim();
+    if (dueAt != null) changes['due_at'] = dueAt.toIso8601String();
+    if (repeatRule != null) changes['repeat_rule'] = repeatRule;
+    if (priority != null) changes['priority'] = priority;
+    if (targetRole != null) changes['target_role'] = targetRole;
+    if (enabled != null) changes['enabled'] = enabled ? 1 : 0;
+    if (changes.isEmpty) return;
+    final updated = await db.update('alarms', changes, id);
+    if (updated == 0) throw StateError('Alarm was not found');
+    final row = (await db.query('alarms', where: 'id=?', args: [id])).first;
+    await db.enqueueSync(entity: 'alarms', entityId: id, operation: 'upsert', payload: Map<String, dynamic>.from(row));
+    await refresh();
+  }
+
+  Future<void> completeAlarm(String id) async {
+    await updateAlarm(id, enabled: false);
+    final updated = await db.update('alarms', {'completed_at': DateTime.now().toIso8601String()}, id);
+    if (updated == 0) throw StateError('Alarm was not found');
+    final row = (await db.query('alarms', where: 'id=?', args: [id])).first;
+    await db.enqueueSync(entity: 'alarms', entityId: id, operation: 'upsert', payload: Map<String, dynamic>.from(row));
+    await refresh();
+  }
+
+  Future<void> snoozeAlarm(String id, Duration duration) async {
+    if (duration.isNegative || duration == Duration.zero) throw ArgumentError('Snooze duration must be positive');
+    final until = DateTime.now().add(duration);
+    await updateAlarm(id, dueAt: until, enabled: true);
+    final updated = await db.update('alarms', {'snoozed_until': until.toIso8601String()}, id);
+    if (updated == 0) throw StateError('Alarm was not found');
+    final row = (await db.query('alarms', where: 'id=?', args: [id])).first;
+    await db.enqueueSync(entity: 'alarms', entityId: id, operation: 'upsert', payload: Map<String, dynamic>.from(row));
+    await refresh();
   }
 
   static void validateCustomerLocation({double? latitude, double? longitude}) {
