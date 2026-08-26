@@ -8,6 +8,12 @@ bool canSubmitPayment({required String? customerId, required String amountText, 
   return customerId != null && customerId.isNotEmpty && amount > 0 && !saving;
 }
 
+List<Map<String, Object?>> lowStockItems(List<Map<String, Object?>> products) => products.where((product) {
+      final stock = (product['stock'] as num?)?.toDouble() ?? 0;
+      final threshold = (product['low_stock'] as num?)?.toDouble() ?? 5;
+      return (product['active'] ?? 1) != 0 && stock <= threshold;
+    }).toList();
+
 class DashboardScreen extends StatefulWidget {
   final BusinessProvider p;
   final ValueChanged<int>? onNavigate;
@@ -27,6 +33,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   num get amount => p.totals['sales'] ?? 0;
   num get received => p.totals['collection'] ?? 0;
   num get due => p.totals['due'] ?? 0;
+  List<Map<String, Object?>> get lowStock => lowStockItems(p.products);
   num get milkInventory => p.products.where((product) => '${product['name'] ?? ''}'.toLowerCase() == 'milk 1 ltr').fold<num>(0, (sum, product) => sum + ((product['stock'] as num?) ?? 0));
 
   @override
@@ -179,13 +186,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const SizedBox(height: 10),
                       SizedBox(
                         width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: widget.onScanToBill,
-                          icon: const Icon(Icons.qr_code_scanner),
-                          label: const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text('Scan item to customer bill', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
+                        child: Card(
+                          margin: EdgeInsets.zero,
+                          elevation: 0,
+                          color: const Color(0xff176acb),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(18),
+                            onTap: widget.onScanToBill,
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              child: Row(
+                                children: [
+                                  CircleAvatar(backgroundColor: Colors.white, foregroundColor: Color(0xff176acb), radius: 24, child: Icon(Icons.camera_alt_outlined, size: 27)),
+                                  SizedBox(width: 12),
+                                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                    Text('SCAN ITEM TO BILL', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+                                    SizedBox(height: 3),
+                                    Text('Open camera → scan barcode → add directly to customer bill', style: TextStyle(color: Colors.white, fontSize: 12)),
+                                  ])),
+                                  Icon(Icons.arrow_forward_ios, color: Colors.white, size: 18),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 10),
+                      if (lowStock.isNotEmpty) ...[
+                        Card(
+                          elevation: 0,
+                          color: const Color(0xfffff1e6),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                          child: ListTile(
+                            leading: const CircleAvatar(backgroundColor: Colors.white, child: Icon(Icons.warning_amber_rounded, color: Color(0xffc86616))),
+                            title: Text('${lowStock.length} item${lowStock.length == 1 ? '' : 's'} need restocking', style: const TextStyle(fontWeight: FontWeight.w700)),
+                            subtitle: Text(lowStock.take(3).map((item) => '${item['name']} (${(item['stock'] as num?)?.toStringAsFixed(1) ?? '0'})').join(' · ')),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => open(3),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
                       Card(
                         elevation: 0,
                         color: const Color(0xffeaf7f0),
@@ -210,6 +252,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           Expanded(child: _QuickAction(icon: Icons.calendar_month_outlined, label: 'Bulk Entry', color: const Color(0xffdff2ef), onTap: () => open(4))),
                         ],
                       ),
+                      const SizedBox(height: 8),
+                      SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: () => open(5), icon: const Icon(Icons.fact_check_outlined), label: const Text('Open daily close report'))),
                       const SizedBox(height: 12),
                       TextField(
                         controller: search,

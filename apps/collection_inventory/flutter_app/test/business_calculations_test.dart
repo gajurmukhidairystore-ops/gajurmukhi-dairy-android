@@ -5,6 +5,7 @@ import 'package:gajurmukhi_dairy_business_pro/services/whatsapp_service.dart';
 import 'package:gajurmukhi_dairy_business_pro/services/role_permissions.dart';
 import 'package:gajurmukhi_dairy_business_pro/services/location_service.dart';
 import 'package:gajurmukhi_dairy_business_pro/services/lucky_draw_service.dart';
+import 'package:gajurmukhi_dairy_business_pro/ui/screens/dashboard.dart';
 
 void main() {
   test('invoice totals and due are never negative', () {
@@ -37,6 +38,15 @@ void main() {
     expect(BusinessCalculations.isValidCreditReminder(amount: 125, customerId: 'cust-1'), isTrue);
     expect(BusinessCalculations.isValidCreditReminder(amount: 0, customerId: 'cust-1'), isFalse);
     expect(BusinessCalculations.isValidCreditReminder(amount: 125, customerId: ''), isFalse);
+  });
+
+  test('dashboard low-stock alert uses configured thresholds and ignores inactive items', () {
+    final items = lowStockItems([
+      {'name': 'Milk', 'stock': 2, 'low_stock': 5, 'active': 1},
+      {'name': 'Rice', 'stock': 20, 'low_stock': 5, 'active': 1},
+      {'name': 'Archived', 'stock': 0, 'low_stock': 5, 'active': 0},
+    ]);
+    expect(items.map((item) => item['name']), ['Milk']);
   });
 
   test('ledger balance treats sale due as debit and payments as credit', () {

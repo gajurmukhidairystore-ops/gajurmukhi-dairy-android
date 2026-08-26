@@ -192,3 +192,7 @@
 - [ ] Rebuild a fresh Gajurmukhi One release with the front-page barcode scanner, direct scan-to-bill flow, and department-store-style inventory price controls while retaining the old APK as a fallback.
 - [ ] Build an embedded Admin-only AI Media Studio for branded social-media images, captions, offers, festival posts, WhatsApp Status content, and media drafts with channel/language selection, preview, confirmation, and native sharing.
 - [ ] Add an offline-first in-app alarm center for payments, farmer settlements, customer dues, loans, milk collection, deliveries, stock checks, and custom tasks, with date/time, repeat, priority, role visibility, Android notifications, snooze, completion, and history.
+- [ ] Add or verify an Admin setting for AI-generated Facebook and multi-channel social-media images and captions with native sharing
+- [x] Make the dashboard scanner a prominent one-tap camera action that directly inserts the scanned product into the active customer bill, with unknown-barcode and permission feedback
+- [x] Add practical operations enhancements: low-stock alerts, daily close summary, sync health, safer destructive actions, and faster dashboard shortcuts
+- [x] Add enhanced validation and audit visibility for billing, inventory, collections, payments, and reminder actions
