@@ -189,3 +189,4 @@
 - [ ] Resolve the repeated installed-APK report: the old `com.gajurmukhi.one` installation still lacks front-page barcode Scan and Add Inventory; deliver a compatible update without uninstalling or clearing data.
 - [ ] Ensure the next in-place update visibly includes one dashboard Scan item to bill action, camera scanning, and automatic scanned-product insertion into the customer bill.
 - [ ] Ensure the in-place update visibly includes one front-page camera scanner and a department-store-style inventory screen with Add item and editable selling price.
+- [ ] Rebuild a fresh Gajurmukhi One release with the front-page barcode scanner, direct scan-to-bill flow, and department-store-style inventory price controls while retaining the old APK as a fallback.

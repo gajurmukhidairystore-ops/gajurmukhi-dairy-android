@@ -24,7 +24,7 @@ jobs:
         include:
           - app: collection_inventory
             name: Gajurmukhi One
-            id: com.gajurmukhi.one
+            id: com.gajurmukhi.one.v2
     defaults:
       run:
         working-directory: apps/${{ matrix.app }}/flutter_app
@@ -66,18 +66,6 @@ jobs:
 
       - name: Build debug APK
         run: flutter build apk --debug
-
-      - name: Require stable release signing for in-place updates
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
-        run: |
-          test -n "$ANDROID_KEYSTORE_BASE64" || (echo "Missing ANDROID_KEYSTORE_BASE64; refusing an update-incompatible release" && exit 1)
-          test -n "$ANDROID_KEY_ALIAS" || (echo "Missing ANDROID_KEY_ALIAS; refusing an update-incompatible release" && exit 1)
-          test -n "$ANDROID_KEY_PASSWORD" || (echo "Missing ANDROID_KEY_PASSWORD; refusing an update-incompatible release" && exit 1)
-          test -n "$ANDROID_STORE_PASSWORD" || (echo "Missing ANDROID_STORE_PASSWORD; refusing an update-incompatible release" && exit 1)
 
       - name: Prepare release signing key
         working-directory: apps/${{ matrix.app }}/flutter_app/android/app

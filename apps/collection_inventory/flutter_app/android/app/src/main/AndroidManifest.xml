@@ -6,7 +6,7 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET" />
     <application
-        android:label="Gajurmukhi One"
+        android:label="Gajurmukhi One New"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

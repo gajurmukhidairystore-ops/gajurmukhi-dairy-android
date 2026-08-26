@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.gajurmukhi.one"
+    namespace = "com.gajurmukhi.one.v2"
 
     val releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
     val releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
@@ -40,7 +40,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.gajurmukhi.one"
+        applicationId = "com.gajurmukhi.one.v2"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 23

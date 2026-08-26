@@ -1,4 +1,4 @@
-package com.gajurmukhi.one
+package com.gajurmukhi.one.v2
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 
