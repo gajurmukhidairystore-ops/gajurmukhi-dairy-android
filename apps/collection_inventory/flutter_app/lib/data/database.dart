@@ -340,7 +340,7 @@ CREATE TABLE milk_collections(
 
   Future<void> applyCloudRecord({required String entity, required String recordId, required String operation, required Map<String, dynamic> payload}) async {
     if (!syncableTables.contains(entity)) return;
-    final localPending = await db.query('sync_queue', where: 'entity=? AND entity_id=? AND synced=0', args: [entity, recordId], limit: 1);
+    final localPending = await db.query('sync_queue', where: 'entity=? AND entity_id=? AND synced=0', whereArgs: [entity, recordId], limit: 1);
     if (localPending.isNotEmpty) return;
     if (operation == 'delete') {
       await delete(entity, recordId);

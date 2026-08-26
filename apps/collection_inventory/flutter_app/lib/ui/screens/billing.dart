@@ -372,11 +372,13 @@ class _BillingScreenState extends State<BillingScreen> {
                       subtitle: Text('Stock ${p['stock']} • ${p['unit']}'),
                       trailing: Text('NPR ${p['sale_price']}'),
                     ),
-                  )                ),
-              ),
-            ),
-            ),
-            Flexible(
+                  )),
+            ],
+          ),
+        ),
+      ),
+    ),
+    Flexible(
               flex: 4,
               fit: FlexFit.loose,
               child: Card(
